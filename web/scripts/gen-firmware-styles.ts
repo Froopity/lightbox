@@ -60,6 +60,8 @@ export function render(styles: StyleSpec[]): string {
     '#pragma once',
     '#include <stdint.h>',
     '',
+    '#include "pgm.h"',
+    '',
     'namespace core {',
     '',
     `constexpr uint8_t MAX_COLORS = ${MAX_COLORS};`,
@@ -79,7 +81,7 @@ export function render(styles: StyleSpec[]): string {
     '};',
   ]
   if (styles.length > 0) {
-    lines.push('', 'enum StyleId : uint8_t {', ...keys, '};', '', 'constexpr StyleDef STYLES[STYLE_COUNT] = {', ...styles.map(styleRow), '};')
+    lines.push('', 'enum StyleId : uint8_t {', ...keys, '};', '', '// In flash on AVR: read entries with styleDef() (style.h), never index directly.', 'constexpr StyleDef STYLES[STYLE_COUNT] CORE_PROGMEM = {', ...styles.map(styleRow), '};')
   }
   lines.push('', '}  // namespace core', '')
   return lines.join('\n')

@@ -2,11 +2,13 @@
 #pragma once
 #include <stdint.h>
 
+#include "pgm.h"
+
 namespace core {
 
 constexpr uint8_t MAX_COLORS = 2;
 constexpr uint8_t MAX_PARAMS = 4;
-constexpr uint8_t STYLE_COUNT = 0;
+constexpr uint8_t STYLE_COUNT = 2;
 
 struct ParamDef {
   uint16_t wireMin, wireMax, def;
@@ -18,6 +20,17 @@ struct StyleDef {
   uint8_t bMin, bMax, paramCount;
   uint32_t defaultColors[MAX_COLORS];
   ParamDef params[MAX_PARAMS];
+};
+
+enum StyleId : uint8_t {
+  STYLE_OMINOUS = 0,
+  STYLE_ALARM = 1,
+};
+
+// In flash on AVR: read entries with styleDef() (style.h), never index directly.
+constexpr StyleDef STYLES[STYLE_COUNT] CORE_PROGMEM = {
+    {0, 1, 8000, 1500, 4, 255, 0, {0x9966CC, 0x000000}, {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}},  // Ominous Glow
+    {1, 1, 2000, 300, 4, 255, 1, {0xFF0000, 0x000000}, {{0, 16, 8}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}},  // Alarm
 };
 
 }  // namespace core

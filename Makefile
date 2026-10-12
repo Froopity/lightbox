@@ -6,7 +6,7 @@ PIO ?= pio
 LIGHTBOX_PORT ?= /dev/ttyUSB0
 export LIGHTBOX_PORT
 
-.PHONY: check check-web check-firmware check-gen gen flash calibrate verify-layout smoke web-deps
+.PHONY: check check-web check-firmware check-gen gen flash demo calibrate verify-layout smoke web-deps
 
 check: check-gen check-web check-firmware
 
@@ -31,6 +31,9 @@ gen: web-deps
 
 flash:
 	cd firmware && $(PIO) run -e nano -t upload --upload-port $(LIGHTBOX_PORT)
+
+demo:
+	cd firmware && $(PIO) run -e demo -t upload --upload-port $(LIGHTBOX_PORT)
 
 calibrate:
 	cd firmware && $(PIO) run -e calibrate -t upload --upload-port $(LIGHTBOX_PORT)

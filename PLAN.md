@@ -28,14 +28,19 @@ Read all of it before starting any phase.
 ```
 arduino/            existing reference sketches — leave untouched
 firmware/
-  platformio.ini    envs: nano (atmelavr, board nanoatmega328new — fall back to nanoatmega328 if upload fails), native, calibrate
+  platformio.ini    envs: nano (atmelavr, board nanoatmega328new — fall back to nanoatmega328 if upload fails), native, calibrate, verify, demo
   src/main.cpp      Arduino glue only: FastLED setup, layout mapping, serial I/O, frame loop
   src/calibrate.cpp calibration sketch (calibrate env only)
   lib/core/         pure C++, NO Arduino/FastLED includes, compiles natively
-    color.h         Rgb struct, scale8, blend (port the FastLED algorithms)
+    rgb.h           Rgb struct, scale8, blend (port the FastLED algorithms). Not `color.h`: lib/core is on
+                    the include path and would shadow FastLED's own color.h. Avoid FastLED header names.
+    pgm.h           CORE_PROGMEM + pgmCopy: constant tables live in flash on AVR (styles_gen.h uses it)
+    style.h         styleDef(id): copies one registry entry out of flash
     trig.h          sin16/cos16 (port the FastLED algorithm), fixed-point helpers
     timing.h        phase accumulator, rate→period mapping
-    frame.h         Frame = Rgb[3][17] (row 0 = bottom, col 0 = calibrated column 0)
+    frame.h         Frame: logical 3×17 view (row 0 = bottom, col 0 = calibrated column 0) over a
+                    caller-owned pixel buffer + index function, so main.cpp renders straight into leds[]
+    engine.h/.cpp   effect state: style, live rate/brightness, global, colours, params, main phase
     effects/*.h/.cpp one per style
     styles_gen.h    GENERATED from shared/styles.json — never hand-edit
     protocol.h/.cpp line parser + state model
@@ -94,6 +99,8 @@ The rate→period mapping can be evaluated once per frame (the LFO may modulate 
 ### 2.3 Time base
 Each frame, compute `dt_us` from `micros()`. Phase accumulators are `uint32_t`, and 2³² is one cycle.
 `phasePerUs = 2^32 / period_us`, computed when the period changes; `phase += dt_us * phasePerUs`.
+Implementation: the increment is held in Q8 (`2^40 / period_us`, rounded) with 8 fractional phase bits, so long periods stay exact to ~10 ppm.
+Measured on hardware (Phase 1): Ominous ≈ 400 fps, Alarm ≈ 300 fps; `micros()` tracks host time to 0.04% despite `show()` disabling interrupts.
 Because rate changes alter the increment and never the phase, rate edits and LFO modulation never cause visual jumps.
 Target ≥ 100 fps. Report the measured fps in the `?` dump.
 

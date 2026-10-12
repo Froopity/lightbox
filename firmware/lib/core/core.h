@@ -1,12 +1,10 @@
 // lib/core: pure C++, no Arduino/FastLED includes, compiles natively.
 #pragma once
-#include <stdint.h>
-
-#include "styles_gen.h"
-
-namespace core {
-
-constexpr uint8_t ROWS = 3;
-constexpr uint8_t COLS = 17;
-
-}  // namespace core
+#include "rgb.h"
+#include "engine.h"
+#include "frame.h"
+#include "style.h"
+#include "timing.h"
+#include "trig.h"
+#include "effects/alarm.h"
+#include "effects/ominous.h"
