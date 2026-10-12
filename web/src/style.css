@@ -1,0 +1,16 @@
+:root {
+  color-scheme: dark;
+  --bg: #0d0d10;
+  --fg: #e8e8ee;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.app {
+  padding: 1rem;
+}

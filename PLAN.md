@@ -8,7 +8,7 @@ Read all of it before starting any phase.
 | Topic | Decision |
 |---|---|
 | Board | Classic Arduino Nano, ATmega328P (2 KB RAM, 32 KB flash). Budget: ≤ 75% RAM, ≤ 85% flash. |
-| LEDs | WS2812B, GRB, 3 strips × 17 on pins 2, 3, 4 (as in `arduino/*.ino`). Physical orientation unknown → calibrated in Phase 0. |
+| LEDs | WS2812B, GRB, 3 strips × 17 on pins 2, 3, 4 (as in `arduino/*.ino`). Calibrated in Phase 0: bottom = pin 2, middle = pin 3, top = pin 4; identity mapping (no offset, no reversal); increasing column = anticlockwise from above. |
 | Architecture | All effects run **on the Arduino**. Browser sends small commands only. |
 | Boot behaviour | Fixed default: Ominous Glow, default colour, rate 0.5, brightness 0.8, global 1.0. No EEPROM. |
 | Transitions | Hard cut between presets. |
