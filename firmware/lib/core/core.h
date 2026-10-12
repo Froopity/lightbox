@@ -3,6 +3,7 @@
 #include "rgb.h"
 #include "engine.h"
 #include "frame.h"
+#include "protocol.h"
 #include "style.h"
 #include "timing.h"
 #include "trig.h"

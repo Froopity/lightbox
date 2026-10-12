@@ -15,6 +15,7 @@ web-deps:
 
 check-gen: web-deps
 	cd web && npx tsx scripts/gen-firmware-styles.ts --check
+	cd web && npx tsx scripts/gen-firmware-fixtures.ts --check
 
 check-web: web-deps
 	cd web && npx eslint .
@@ -28,6 +29,7 @@ check-firmware:
 
 gen: web-deps
 	cd web && npx tsx scripts/gen-firmware-styles.ts
+	cd web && npx tsx scripts/gen-firmware-fixtures.ts
 
 flash:
 	cd firmware && $(PIO) run -e nano -t upload --upload-port $(LIGHTBOX_PORT)

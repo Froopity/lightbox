@@ -1,7 +1,15 @@
 :root {
   color-scheme: dark;
   --bg: #0d0d10;
+  --panel: #16161c;
+  --surface: #22222b;
+  --border: #2e2e3a;
   --fg: #e8e8ee;
+  --muted: #8a8a99;
+  --ok: #3ad17a;
+  --warn: #f2b440;
+  --danger: #e5484d;
+  --accent: #8b6cff;
   font-family: system-ui, sans-serif;
 }
 
@@ -11,6 +19,20 @@ body {
   color: var(--fg);
 }
 
-.app {
-  padding: 1rem;
+button {
+  font: inherit;
+  font-weight: 600;
+  min-height: 2.75rem;
+  padding: 0.5rem 1.2rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
 }

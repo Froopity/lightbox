@@ -1,34 +1,12 @@
 // Writes firmware/lib/core/styles_gen.h from shared/styles.json (PLAN.md §2.4).
 // `--check` exits non-zero if the committed header is out of date.
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { resolve } from 'node:path'
+import { MAX_COLORS, MAX_PARAMS, type StyleSpec } from '../src/styles/types'
+import { writeOrCheck } from './gen-util'
 
-export interface ParamSpec {
-  key: string
-  label: string
-  wireMin: number
-  wireMax: number
-  default: number
-  scale: number
-  unit?: string
-}
-
-export interface StyleSpec {
-  id: number
-  key: string
-  name: string
-  colors: number
-  periodSlowMs: number
-  periodFastMs: number
-  bMin: number
-  bMax: number
-  defaultColors: string[]
-  params: ParamSpec[]
-}
-
-export const MAX_COLORS = 2
-export const MAX_PARAMS = 4
+export type { StyleSpec }
 
 const ROOT = resolve(fileURLToPath(import.meta.url), '../../..')
 export const STYLES_JSON = resolve(ROOT, 'shared/styles.json')
@@ -89,23 +67,7 @@ export function render(styles: StyleSpec[]): string {
 
 function main(): void {
   const { styles } = JSON.parse(readFileSync(STYLES_JSON, 'utf8')) as { styles: StyleSpec[] }
-  const out = render(styles)
-  if (process.argv.includes('--check')) {
-    let current = ''
-    try {
-      current = readFileSync(HEADER, 'utf8')
-    } catch {
-      // missing counts as stale
-    }
-    if (current !== out) {
-      console.error('styles_gen.h is out of date: run `make gen`')
-      process.exit(1)
-    }
-    console.log('styles_gen.h up to date')
-  } else {
-    writeFileSync(HEADER, out)
-    console.log(`wrote ${HEADER}`)
-  }
+  writeOrCheck(HEADER, render(styles), process.argv.includes('--check'))
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) main()

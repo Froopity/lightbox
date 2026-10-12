@@ -1,5 +1,5 @@
 // Effect state: active style, live controls, colours, params, and the main phase.
-// main.cpp drives it each frame (tick → render); the Phase 2 protocol will drive the setters.
+// main.cpp drives it each frame (tick → render); protocol.h drives the setters.
 #pragma once
 #include <stdint.h>
 
@@ -35,6 +35,7 @@ class Engine {
   uint16_t global() const { return global_; }
   uint32_t color(uint8_t slot) const { return slot < MAX_COLORS ? colors_[slot] : 0; }
   uint16_t param(uint8_t idx) const { return idx < MAX_PARAMS ? params_[idx] : 0; }
+  uint8_t paramCount() const { return def_.paramCount; }
   uint32_t phase() const { return phase_.value; }
   PhaseInc inc() const { return inc_; }
 

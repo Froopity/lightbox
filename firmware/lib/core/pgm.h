@@ -21,4 +21,12 @@ inline void pgmCopy(void* dst, const void* src, size_t n) {
 #endif
 }
 
+inline uint8_t pgmByte(const void* src) {
+#ifdef __AVR__
+  return pgm_read_byte(src);
+#else
+  return *static_cast<const uint8_t*>(src);
+#endif
+}
+
 }  // namespace core
