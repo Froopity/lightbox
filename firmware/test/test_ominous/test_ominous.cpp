@@ -7,7 +7,7 @@ using namespace core;
 void setUp() {}
 void tearDown() {}
 
-static double reference(double phi) { return 0.25 + 0.75 * (1 - cos(2 * PI_D * phi)) / 2; }
+static double reference(double phi) { return 0.1 + 0.9 * (1 - cos(2 * PI_D * phi)) / 2; }
 
 static void test_matches_reference() {
   for (int i = 0; i < 4096; i++) {
@@ -23,7 +23,7 @@ static void test_min_max_over_one_period() {
     lo = v < lo ? v : lo;
     hi = v > hi ? v : hi;
   }
-  TEST_ASSERT_INT_WITHIN(2, toByte(0.25), lo);
+  TEST_ASSERT_INT_WITHIN(2, toByte(0.1), lo);
   TEST_ASSERT_EQUAL_INT(255, hi);
 }
 

@@ -109,7 +109,7 @@ Target ≥ 100 fps. Report the measured fps in the `?` dump.
 { "styles": [
   { "id": 0, "key": "ominous", "name": "Ominous Glow", "colors": 1, "periodSlowMs": 8000, "periodFastMs": 1500, "params": [] },
   { "id": 1, "key": "alarm", "name": "Alarm", "colors": 1, "periodSlowMs": 2000, "periodFastMs": 300,
-    "params": [{ "key": "tail", "label": "Tail", "wireMin": 0, "wireMax": 16, "default": 8, "scale": 0.5, "unit": "cols" }] },
+    "params": [{ "key": "tail", "label": "Tail", "wireMin": 0, "wireMax": 16, "default": 6, "scale": 0.5, "unit": "cols" }] },
   { "id": 2, "key": "twotone", "name": "Two-tone Glow", "colors": 2, "periodSlowMs": 6000, "periodFastMs": 1000, "params": [] },
   { "id": 3, "key": "pulse", "name": "Vertical Pulse", "colors": 1, "periodSlowMs": 2800, "periodFastMs": 700, "params": [] },
   { "id": 4, "key": "lighthouse", "name": "Lighthouse", "colors": 1, "periodSlowMs": 10000, "periodFastMs": 2000,
@@ -130,15 +130,15 @@ Use integer sin16/cos16 at runtime; the formulas below are the reference that na
 
 ### 3.1 Ominous Glow (Phase 1)
 All 51 LEDs are identical. A breathing glow:
-`I = D + (1 − D) · (1 − cos 2πφ) / 2`, with `D = 0.25` (constant). The trough is 25% of the peak.
+`I = D + (1 − D) · (1 − cos 2πφ) / 2`, with `D = 0.1` (constant). The trough is 10% of the peak (tuned at the Phase 1 gate from 0.25: "should go darker").
 Period 8 s (slow) → 1.5 s (fast).
-Tests: min/max over one period ≈ 0.25/1.0; the period is exact; changing rate mid-cycle causes no jump in I.
+Tests: min/max over one period ≈ 0.1/1.0; the period is exact; changing rate mid-cycle causes no jump in I.
 
 ### 3.2 Alarm (Phase 1)
 Two vertical lines (all rows identical) of the same colour, 8.5 columns apart, rotating linearly toward increasing column numbers.
 Head positions: `x₀ = 17φ`, `x₁ = x₀ + 8.5` (mod 17).
 For column c and head x, let `d = ((x − c) mod 17)` mapped to (−8.5, 8.5]. `d > 0` means the column is behind the head.
-Profile, with tail length `L` = param `tail` in columns (default 4):
+Profile, with tail length `L` = param `tail` in columns (default 3, tuned at the Phase 1 gate from 4):
 ```
 f(d) = 0                         d < −1
        1 + d                     −1 ≤ d < 0       (leading anti-alias edge)

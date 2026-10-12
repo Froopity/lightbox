@@ -23,7 +23,7 @@ static void test_load_style_sets_defaults_and_resets_phase() {
   e.loadStyle(STYLE_ALARM);
   TEST_ASSERT_EQUAL_UINT32(0, e.phase());
   TEST_ASSERT_EQUAL_HEX32(0xFF0000, e.color(0));
-  TEST_ASSERT_EQUAL_UINT16(8, e.param(0));
+  TEST_ASSERT_EQUAL_UINT16(6, e.param(0));
   TEST_ASSERT_EQUAL_UINT16(500, e.rate());  // live rate survives a style change
 }
 

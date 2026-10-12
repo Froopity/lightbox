@@ -30,7 +30,7 @@ enum StyleId : uint8_t {
 // In flash on AVR: read entries with styleDef() (style.h), never index directly.
 constexpr StyleDef STYLES[STYLE_COUNT] CORE_PROGMEM = {
     {0, 1, 8000, 1500, 4, 255, 0, {0x9966CC, 0x000000}, {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}},  // Ominous Glow
-    {1, 1, 2000, 300, 4, 255, 1, {0xFF0000, 0x000000}, {{0, 16, 8}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}},  // Alarm
+    {1, 1, 2000, 300, 4, 255, 1, {0xFF0000, 0x000000}, {{0, 16, 6}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}},  // Alarm
 };
 
 }  // namespace core

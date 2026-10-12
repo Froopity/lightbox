@@ -22,7 +22,7 @@
       "bMin": 4,
       "bMax": 255,
       "defaultColors": ["#FF0000"],
-      "params": [{ "key": "tail", "label": "Tail", "wireMin": 0, "wireMax": 16, "default": 8, "scale": 0.5, "unit": "cols" }]
+      "params": [{ "key": "tail", "label": "Tail", "wireMin": 0, "wireMax": 16, "default": 6, "scale": 0.5, "unit": "cols" }]
     }
   ]
 }
