@@ -109,7 +109,7 @@ Target ≥ 100 fps. Report the measured fps in the `?` dump.
 { "styles": [
   { "id": 0, "key": "ominous", "name": "Ominous Glow", "colors": 1, "periodSlowMs": 8000, "periodFastMs": 1500, "params": [] },
   { "id": 1, "key": "alarm", "name": "Alarm", "colors": 1, "periodSlowMs": 2000, "periodFastMs": 300,
-    "params": [{ "key": "tail", "label": "Tail", "wireMin": 0, "wireMax": 16, "default": 6, "scale": 0.5, "unit": "cols" }] },
+    "params": [{ "key": "tail", "label": "Tail", "wireMin": 0, "wireMax": 16, "default": 0, "scale": 0.5, "unit": "cols" }] },
   { "id": 2, "key": "twotone", "name": "Two-tone Glow", "colors": 2, "periodSlowMs": 6000, "periodFastMs": 1000, "params": [] },
   { "id": 3, "key": "pulse", "name": "Vertical Pulse", "colors": 1, "periodSlowMs": 2800, "periodFastMs": 700, "params": [] },
   { "id": 4, "key": "lighthouse", "name": "Lighthouse", "colors": 1, "periodSlowMs": 10000, "periodFastMs": 2000,
@@ -135,19 +135,19 @@ Period 8 s (slow) → 1.5 s (fast).
 Tests: min/max over one period ≈ 0.1/1.0; the period is exact; changing rate mid-cycle causes no jump in I.
 
 ### 3.2 Alarm (Phase 1)
-Two vertical lines (all rows identical) of the same colour, 8.5 columns apart, rotating linearly toward increasing column numbers.
-Head positions: `x₀ = 17φ`, `x₁ = x₀ + 8.5` (mod 17).
-For column c and head x, let `d = ((x − c) mod 17)` mapped to (−8.5, 8.5]. `d > 0` means the column is behind the head.
-Profile, with tail length `L` = param `tail` in columns (default 3, tuned at the Phase 1 gate from 4):
+Two full-brightness vertical lines (all rows identical) of the same colour, 8.5 columns apart, rotating toward increasing column numbers.
+**Hard-stepped** (Phase 1 gate: "just two full bright columns"): each line occupies exactly one column at full brightness and jumps to the next; no anti-aliasing.
+Head columns: `h₀ = ⌊17φ⌋`, `h₁ = ⌊17φ + 8.5⌋ mod 17`. Because 17 is odd, the gap between the lines alternates 8/9 columns every half-column of travel.
+For column c and head h, let `d = (h − c) mod 17` in whole columns; `d ∈ 1..8` is behind the head, `d ∈ 9..16` is ahead (dark).
+Optional tail, `L` = param `tail` in columns (default **0** = bare columns; kept so presets can dial one in):
 ```
-f(d) = 0                         d < −1
-       1 + d                     −1 ≤ d < 0       (leading anti-alias edge)
-       (1 − d/(L+1))²            0 ≤ d ≤ L+1      (tail)
+f(d) = 1                         d = 0
+       (1 − d/(L+1))²            1 ≤ d < L+1      (tail, behind the head only)
        0                         otherwise
 ```
-`I(c) = max(f(d₀), f(d₁))`. Because the profile is continuous, sampling at integer columns gives smooth sub-pixel motion.
+`I(c) = max(f(d₀), f(d₁))`.
 Period (one revolution) 2 s → 0.3 s.
-Tests: the peak column tracks 17φ; the lines stay 8.5 apart; L=0 lights only the 1–2 anti-aliased columns; no column steps by more than (1/(L+1)) between consecutive 1 ms frames.
+Tests: head columns match ⌊17φ⌋ and ⌊17φ + 8.5⌋; L=0 gives exactly two columns at 255 and the rest 0; the tail only lights columns behind the head; at the fastest rate with 1 ms frames each line steps one column at a time and never skips.
 
 ### 3.3 Two-tone Glow (Phase 4)
 Each LED i (all 51 independently) has its own phase φᵢ (uint16) and multiplier mᵢ ∈ [0.5, 1.5] (uint8, stored as m·128).

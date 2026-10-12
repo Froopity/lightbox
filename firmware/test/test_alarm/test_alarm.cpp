@@ -7,94 +7,77 @@ using namespace core;
 void setUp() {}
 void tearDown() {}
 
-// §3.2 reference profile, d in columns, L in columns.
-static double refProfile(double d, double L) {
-  if (d < -1) return 0;
-  if (d < 0) return 1 + d;
-  if (d <= L + 1) return pow(1 - d / (L + 1), 2);
-  return 0;
+// §3.2 reference profile, d in whole columns behind the head, L in columns.
+static double refProfile(int d, double L) {
+  if (d == 0) return 1;
+  if (d < 0 || d >= L + 1) return 0;
+  return pow(1 - d / (L + 1), 2);
 }
 
-static double wrapCols(double d) {
-  d = fmod(d, 17.0);
-  if (d <= -8.5) d += 17;
-  if (d > 8.5) d -= 17;
-  return d;
-}
-
-static double refIntensity(double phi, int col, double L) {
-  double x0 = 17 * phi, x1 = x0 + 8.5;
-  double a = refProfile(wrapCols(x0 - col), L), b = refProfile(wrapCols(x1 - col), L);
-  return a > b ? a : b;
-}
+static int refHead(double phi, int line) { return (int)floor(17 * phi + 8.5 * line) % 17; }
 
 static void test_profile_matches_reference() {
   for (uint8_t tail = 0; tail <= 16; tail++)
-    for (int32_t d = -3 * alarm::COL_Q; d <= 12 * alarm::COL_Q; d += 97)
-      TEST_ASSERT_INT_WITHIN(2, toByte(refProfile((double)d / alarm::COL_Q, tail * 0.5)), alarm::profile(d, tail));
+    for (int8_t d = -3; d <= 12; d++) TEST_ASSERT_INT_WITHIN(2, toByte(refProfile(d, tail * 0.5)), alarm::profile(d, tail));
 }
 
-static void test_intensity_matches_reference() {
-  for (uint8_t tail = 0; tail <= 16; tail += 4)
-    for (int i = 0; i < 1000; i++) {
-      double phi = i / 1000.0;
-      for (uint8_t c = 0; c < COLS; c++)
-        TEST_ASSERT_INT_WITHIN(2, toByte(refIntensity(phi, c, tail * 0.5)), alarm::intensity(phaseOf(phi), c, tail));
-    }
-}
-
-static void test_peak_column_tracks_head() {
-  for (int k = 0; k < 17; k++) {
-    uint32_t phase = phaseOf((k + 0.001) / 17.0);  // head just past column k
-    TEST_ASSERT_UINT8_WITHIN(1, 255, alarm::intensity(phase, (uint8_t)k, 8));
-    for (uint8_t c = 0; c < COLS; c++) TEST_ASSERT_TRUE(alarm::intensity(phase, c, 8) <= alarm::intensity(phase, (uint8_t)k, 8));
+static void test_heads_follow_17_phi_and_sit_8_5_apart() {
+  for (int i = 0; i < 10000; i++) {
+    double phi = (i + 0.5) / 10000.0;
+    TEST_ASSERT_EQUAL_UINT8(refHead(phi, 0), alarm::headColumn(phaseOf(phi), 0));
+    TEST_ASSERT_EQUAL_UINT8(refHead(phi, 1), alarm::headColumn(phaseOf(phi), 1));
   }
 }
 
-static void test_lines_are_8_5_columns_apart() {
-  // Head 0 at column 3.5: head 1 sits at column 12, so column 12 is fully lit and 3/4 share the first head.
-  uint32_t phase = phaseOf(3.5 / 17.0);
-  TEST_ASSERT_UINT8_WITHIN(1, 255, alarm::intensity(phase, 12, 8));
-  TEST_ASSERT_INT_WITHIN(2, toByte(0.5), alarm::intensity(phase, 4, 8));  // leading edge, half a column ahead
-  TEST_ASSERT_INT_WITHIN(2, toByte(pow(1 - 0.5 / 5, 2)), alarm::intensity(phase, 3, 8));
-}
-
-static void test_zero_tail_lights_only_antialiased_columns() {
+static void test_zero_tail_is_two_full_columns() {
   for (int i = 0; i < 2000; i++) {
-    uint32_t phase = phaseOf(i / 2000.0);
+    uint32_t phase = phaseOf((i + 0.5) / 2000.0);
     int lit = 0;
-    for (uint8_t c = 0; c < COLS; c++) lit += alarm::intensity(phase, c, 0) > 0;
-    TEST_ASSERT_TRUE(lit >= 2 && lit <= 4);  // 1–2 per line
+    for (uint8_t c = 0; c < COLS; c++) {
+      uint8_t v = alarm::intensity(phase, c, 0);
+      TEST_ASSERT_TRUE(v == 0 || v == 255);
+      lit += v == 255;
+    }
+    TEST_ASSERT_EQUAL_INT(2, lit);
+    TEST_ASSERT_EQUAL_UINT8(255, alarm::intensity(phase, alarm::headColumn(phase, 0), 0));
+    TEST_ASSERT_EQUAL_UINT8(255, alarm::intensity(phase, alarm::headColumn(phase, 1), 0));
   }
 }
 
-static void test_no_column_steps_more_than_tail_slope() {
-  // Fastest rate, 1 ms frames, a full revolution, every tail length.
-  for (uint8_t tail = 0; tail <= 16; tail++) {
-    Engine e;
-    e.loadStyle(STYLE_ALARM);
-    e.setRate(1000);
-    e.setParam(0, tail);
-    uint8_t prev[COLS];
-    for (uint8_t c = 0; c < COLS; c++) prev[c] = alarm::intensity(e.phase(), c, tail);
-    int limit = (int)ceil(255.0 / (tail * 0.5 + 1));
-    for (int ms = 0; ms < 300; ms++) {
-      e.tick(1000);
-      for (uint8_t c = 0; c < COLS; c++) {
-        uint8_t cur = alarm::intensity(e.phase(), c, tail);
-        TEST_ASSERT_INT_WITHIN(limit, prev[c], cur);
-        prev[c] = cur;
-      }
+static void test_tail_trails_behind_only() {
+  uint32_t phase = phaseOf(5.2 / 17.0);  // line 0 on column 5, line 1 on column 13
+  uint8_t tail = 6;                      // 3 columns
+  TEST_ASSERT_EQUAL_UINT8(255, alarm::intensity(phase, 5, tail));
+  TEST_ASSERT_INT_WITHIN(2, toByte(pow(1 - 1 / 4.0, 2)), alarm::intensity(phase, 4, tail));
+  TEST_ASSERT_INT_WITHIN(2, toByte(pow(1 - 3 / 4.0, 2)), alarm::intensity(phase, 2, tail));
+  TEST_ASSERT_EQUAL_UINT8(0, alarm::intensity(phase, 1, tail));
+  TEST_ASSERT_EQUAL_UINT8(0, alarm::intensity(phase, 6, tail));  // ahead of line 0
+}
+
+static void test_steps_through_every_column_in_order() {
+  // Fastest rate, 1 ms frames: each line moves one column forward at a time, never skipping.
+  Engine e;
+  e.loadStyle(STYLE_ALARM);
+  e.setRate(1000);
+  uint8_t prev = alarm::headColumn(e.phase(), 0), steps = 0;
+  for (int ms = 0; ms < 300; ms++) {
+    e.tick(1000);
+    uint8_t cur = alarm::headColumn(e.phase(), 0);
+    if (cur != prev) {
+      TEST_ASSERT_EQUAL_UINT8((prev + 1) % COLS, cur);
+      steps++;
     }
+    prev = cur;
   }
+  TEST_ASSERT_EQUAL_UINT8(17, steps);  // one revolution in 300 ms
 }
 
 static void test_render_rows_identical() {
   TestFrame t;
   uint32_t phase = phaseOf(0.37);
-  alarm::render(t.f, phase, rgbFrom(0xFF0000), 8);
+  alarm::render(t.f, phase, rgbFrom(0xFF0000), 4);
   for (uint8_t c = 0; c < COLS; c++) {
-    uint8_t i = alarm::intensity(phase, c, 8);
+    uint8_t i = alarm::intensity(phase, c, 4);
     for (uint8_t r = 0; r < ROWS; r++) {
       TEST_ASSERT_EQUAL_UINT8(i, t.f.get(r, c).r);
       TEST_ASSERT_EQUAL_UINT8(0, t.f.get(r, c).g);
@@ -105,11 +88,10 @@ static void test_render_rows_identical() {
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_profile_matches_reference);
-  RUN_TEST(test_intensity_matches_reference);
-  RUN_TEST(test_peak_column_tracks_head);
-  RUN_TEST(test_lines_are_8_5_columns_apart);
-  RUN_TEST(test_zero_tail_lights_only_antialiased_columns);
-  RUN_TEST(test_no_column_steps_more_than_tail_slope);
+  RUN_TEST(test_heads_follow_17_phi_and_sit_8_5_apart);
+  RUN_TEST(test_zero_tail_is_two_full_columns);
+  RUN_TEST(test_tail_trails_behind_only);
+  RUN_TEST(test_steps_through_every_column_in_order);
   RUN_TEST(test_render_rows_identical);
   return UNITY_END();
 }

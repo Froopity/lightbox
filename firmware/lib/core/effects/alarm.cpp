@@ -5,51 +5,37 @@ namespace alarm {
 
 namespace {
 
-// Tail span L + 1 in fixed-point columns, where L = tailWire · 0.5.
-int32_t spanQ8(uint8_t tailWire) { return (int32_t)tailWire * (COL_Q / 2) + COL_Q; }
-
-// Profile with the per-frame reciprocal of the span precomputed: invSpan = 2^28 / span.
-uint8_t profileFast(int32_t d, int32_t span, uint32_t invSpan) {
-  if (d < -COL_Q || d > span) return 0;
-  if (d < 0) return (uint8_t)(((d + COL_Q) * 255 + COL_Q / 2) >> 12);  // leading edge 1 + d
-  uint32_t u = ((uint32_t)d * invSpan) >> 12;                           // d / span in Q16
-  uint32_t v = u >= 65535 ? 0 : 65535 - u;                       // 1 − d/span in Q16
-  return (uint8_t)((v * v) >> 24);
-}
-
-// Circular distance x − c mapped to (−8.5, 8.5] columns. Callers pass d in (−17, 25.5) columns.
-int32_t wrapQ8(int32_t d) {
-  if (d <= -TURN_Q / 2) d += TURN_Q;
-  if (d > TURN_Q / 2) d -= TURN_Q;
-  return d;
-}
-
-uint8_t columnIntensity(int32_t x0, uint8_t col, int32_t span, uint32_t invSpan) {
-  int32_t c = (int32_t)col * COL_Q;
-  uint8_t a = profileFast(wrapQ8(x0 - c), span, invSpan);
-  uint8_t b = profileFast(wrapQ8(x0 + TURN_Q / 2 - c), span, invSpan);
-  return a > b ? a : b;
-}
+// Columns head is ahead of col, in [0, 17): 0 = on the head, small = just behind it.
+uint8_t behind(uint8_t head, uint8_t col) { return (uint8_t)((head + COLS - col) % COLS); }
 
 }  // namespace
 
-int32_t head(uint32_t phase) { return (int32_t)(((uint64_t)phase * TURN_Q) >> 32); }
+uint8_t headColumn(uint32_t phase, uint8_t line) {
+  // 34 half-columns per turn; line 1 is 17 half-columns (8.5 columns) ahead of line 0.
+  uint8_t half = (uint8_t)(((uint64_t)phase * (2 * COLS)) >> 32);
+  if (line) half = (uint8_t)((half + COLS) % (2 * COLS));
+  return (uint8_t)(half / 2);
+}
 
-uint8_t profile(int32_t d, uint8_t tailWire) {
-  int32_t span = spanQ8(tailWire);
-  return profileFast(d, span, ((uint32_t)1 << 28) / (uint32_t)span);
+uint8_t profile(int8_t d, uint8_t tailWire) {
+  if (d == 0) return 255;
+  // Tail (1 − d/(L+1))², with L + 1 = (tailWire + 2) half-columns.
+  int16_t span = (int16_t)(tailWire + 2), d2 = (int16_t)(2 * d);
+  if (d < 0 || d2 >= span) return 0;
+  uint16_t v = (uint16_t)(((span - d2) * 255 + span / 2) / span);  // 1 − d/(L+1) as 0..255
+  return (uint8_t)((v * v + 127) / 255);
 }
 
 uint8_t intensity(uint32_t phase, uint8_t col, uint8_t tailWire) {
-  int32_t span = spanQ8(tailWire);
-  return columnIntensity(head(phase), col, span, ((uint32_t)1 << 28) / (uint32_t)span);
+  uint8_t a = behind(headColumn(phase, 0), col), b = behind(headColumn(phase, 1), col);
+  // Anything more than half a turn behind counts as ahead of the line: dark.
+  uint8_t pa = a <= COLS / 2 ? profile((int8_t)a, tailWire) : 0;
+  uint8_t pb = b <= COLS / 2 ? profile((int8_t)b, tailWire) : 0;
+  return pa > pb ? pa : pb;
 }
 
 void render(Frame& f, uint32_t phase, Rgb color, uint8_t tailWire) {
-  int32_t span = spanQ8(tailWire);
-  uint32_t invSpan = ((uint32_t)1 << 28) / (uint32_t)span;
-  int32_t x0 = head(phase);
-  for (uint8_t c = 0; c < COLS; c++) f.setColumn(c, scale(color, columnIntensity(x0, c, span, invSpan)));
+  for (uint8_t c = 0; c < COLS; c++) f.setColumn(c, scale(color, intensity(phase, c, tailWire)));
 }
 
 }  // namespace alarm

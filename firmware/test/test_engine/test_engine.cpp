@@ -23,7 +23,7 @@ static void test_load_style_sets_defaults_and_resets_phase() {
   e.loadStyle(STYLE_ALARM);
   TEST_ASSERT_EQUAL_UINT32(0, e.phase());
   TEST_ASSERT_EQUAL_HEX32(0xFF0000, e.color(0));
-  TEST_ASSERT_EQUAL_UINT16(6, e.param(0));
+  TEST_ASSERT_EQUAL_UINT16(0, e.param(0));
   TEST_ASSERT_EQUAL_UINT16(500, e.rate());  // live rate survives a style change
 }
 
@@ -61,10 +61,8 @@ static void test_render_dispatches_on_style() {
   e.loadStyle(STYLE_ALARM);
   TestFrame t;
   e.render(t.f);
-  // Phase 0: head 0 on column 0 (full), column 1 on the leading edge (dark), head 1 between 8 and 9.
-  TEST_ASSERT_EQUAL_UINT8(255, t.f.get(0, 0).r);
-  TEST_ASSERT_EQUAL_UINT8(0, t.f.get(0, 1).r);
-  TEST_ASSERT_TRUE(t.f.get(2, 8).r > 0 && t.f.get(2, 9).r > 0);
+  // Phase 0: line 0 on column 0, line 1 on column 8 (8.5 rounded down), everything else dark.
+  for (uint8_t c = 0; c < COLS; c++) TEST_ASSERT_EQUAL_UINT8(c == 0 || c == 8 ? 255 : 0, t.f.get(2, c).r);
 }
 
 int main() {
