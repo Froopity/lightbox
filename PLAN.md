@@ -329,6 +329,7 @@ Within a phase, firmware and web work can run as two parallel agents once the `s
 2. The UI picks them up from the registry automatically. Add default presets for the new styles, seeding only those missing so existing user presets are kept.
 3. `demo` env cycles all five styles (10 s each, in id order), stepping rate 0 → 0.5 → 1 after each round.
 4. **Gate checklist (expect tuning iterations):** Two-tone randomness/spread; Pulse vs. the original wave.ino; Lighthouse whip/flash/width at several settings, and which column is the front. Record final defaults in `styles.json` and §3.
+   **Signed off 2026-10-13 with no tuning:** the defaults in §2.4/§3 are final, including the Pulse on/off edge (kept as in wave.ino) and front column 0.
 
 ### Phase 5 — Live "Current" panel
 1. Current panel (third column, above where LFO goes): live rate and brightness sliders with ↻ reset-to-preset buttons, sending `R`/`B`. Never mutates the preset.
