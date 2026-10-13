@@ -1,29 +1,54 @@
-// What the board should be showing. Phase 2: one style at its defaults (presets arrive in Phase 3).
+// What the board is showing: the active preset (or editor draft) and the live rate/brightness.
+// Every change is sent; while offline it is dropped and the resend on connect covers it.
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { Command } from '../protocol/commands'
-import { defaultParams, STYLES, styleById } from '../styles/registry'
-import { DEFAULT_BRIGHTNESS, DEFAULT_GLOBAL, DEFAULT_RATE } from '../styles/types'
+import { clonePreset, presetCommand, styleDefaults, toWire, type PresetData } from '../presets/preset'
+import { styleByKey } from '../styles/registry'
 import { useConnectionStore } from './connection'
+import { useGlobalStore } from './global'
 
 export const useLiveStore = defineStore('live', () => {
-  const style = ref(STYLES[0]?.id ?? 0)
+  /** The selected preset, or null (nothing selected, or a new preset being drafted). Not persisted. */
+  const activeId = ref<string | null>(null)
+  /** The settings on the board; `rate`/`brightness` are the live values. */
+  const current = ref<PresetData>(styleDefaults())
 
-  function presetCommand(): Command {
-    const s = styleById(style.value) ?? STYLES[0]
-    if (!s) throw new Error('styles.json has no styles')
-    return { type: 'P', style: s.id, rate: DEFAULT_RATE, brightness: DEFAULT_BRIGHTNESS, colors: s.defaultColors, params: defaultParams(s) }
+  const send = (cmd: Command): void => useConnectionStore().send(cmd)
+
+  /** Loads settings onto the board (`P`): resets the effect and the live values. */
+  function show(p: PresetData, id: string | null): void {
+    current.value = clonePreset(p)
+    activeId.value = id
+    send(presetCommand(current.value))
   }
 
-  /** Switches the board to a style with its default settings. */
-  function selectStyle(id: number): void {
-    style.value = id
-    useConnectionStore().send(presetCommand())
+  function setRate(v: number): void {
+    current.value.rate = v
+    send({ type: 'R', rate: toWire(v) })
   }
 
+  function setBrightness(v: number): void {
+    current.value.brightness = v
+    send({ type: 'B', brightness: toWire(v) })
+  }
+
+  function setColor(slot: number, color: string): void {
+    current.value.colors[slot] = color
+    send({ type: 'C', slot, color })
+  }
+
+  function setParam(key: string, value: number): void {
+    const idx = styleByKey(current.value.style)?.params.findIndex((p) => p.key === key) ?? -1
+    if (idx < 0) return
+    current.value.params[key] = value
+    send({ type: 'A', idx, value })
+  }
+
+  /** Restores a freshly reset board: P, then G (then L once the LFO exists). */
   function resyncCommands(): Command[] {
-    return [presetCommand(), { type: 'G', global: DEFAULT_GLOBAL }]
+    return [presetCommand(current.value), useGlobalStore().command()]
   }
 
-  return { style, selectStyle, resyncCommands }
+  return { activeId, current, show, setRate, setBrightness, setColor, setParam, resyncCommands }
 })

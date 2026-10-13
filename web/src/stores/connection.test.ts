@@ -1,12 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { encode } from '../protocol/commands'
+import { styleDefaults } from '../presets/preset'
+import { styleById } from '../styles/registry'
 import { installFakeSerial, removeFakeSerial } from '../testing/installFakeSerial'
 import type { FakeSerial } from '../testing/fakeSerial'
 import { useConnectionStore } from './connection'
 import { useLiveStore } from './live'
 
 let serial: FakeSerial
+
+function showAlarm(live: ReturnType<typeof useLiveStore>): void {
+  const alarm = styleById(1)
+  if (!alarm) throw new Error('no style 1')
+  live.show(styleDefaults(alarm), null)
+}
 
 function stores() {
   const connection = useConnectionStore()
@@ -16,6 +24,7 @@ function stores() {
 }
 
 beforeEach(() => {
+  localStorage.clear()
   setActivePinia(createPinia())
   serial = installFakeSerial()
 })
@@ -71,10 +80,10 @@ describe('connection store', () => {
     expect(connection.error).toMatch(/did not answer/)
   })
 
-  it('sends style changes while connected', async () => {
+  it('sends preset loads while connected', async () => {
     const { connection, live } = stores()
     await connection.connect()
-    live.selectStyle(1)
+    showAlarm(live)
     await vi.waitFor(() => expect(serial.port.device.model.state.style).toBe(1))
     expect(serial.port.device.model.state.colors[0]).toBe('#FF0000')
   })
@@ -82,7 +91,7 @@ describe('connection store', () => {
   it('shows reconnecting after an unplug, then recovers and resends the state', async () => {
     const { connection, live } = stores()
     await connection.connect()
-    live.selectStyle(1)
+    showAlarm(live)
     await vi.waitFor(() => expect(serial.port.device.model.state.style).toBe(1))
     serial.port.unplug()
     await vi.waitFor(() => expect(connection.status).toBe('reconnecting'))
@@ -104,7 +113,7 @@ describe('connection store', () => {
 
   it('drops commands while offline; the resend covers them', async () => {
     const { connection, live } = stores()
-    live.selectStyle(1)
+    showAlarm(live)
     expect(serial.port.device.lines).toHaveLength(0)
     await connection.connect()
     expect(serial.port.device.model.state.style).toBe(1)

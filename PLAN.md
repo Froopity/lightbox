@@ -242,6 +242,12 @@ Use `?` after connecting to verify the firmware state matches the UI.
   **✕** discards the draft, closes the editor and reloads the saved preset (sends `P`). `+` opens a draft with the first style's defaults; it becomes a preset only when saved (✕ creates nothing).
   Selecting another preset, opening another editor, or pressing `1`–`9` while the draft has unsaved changes asks "Discard unsaved changes?" first.
 - The ↻ on the active preset row reloads that preset: it sends `P` (live rate/brightness back to the preset values, effect state reset, LFO off).
+- Details settled in Phase 3 (confirm at the gate):
+  on load the first preset in the list is active; clicking the already-active row does nothing (↻ restarts it); selecting another preset closes the editor.
+  Changing Style in the editor resets colours and params to that style's defaults and keeps rate/brightness; the name follows the style unless it was customised. A blank name saves as the style name.
+  Duplicate saves the current draft as "<name> copy" right after the original and keeps editing the copy (the original is unchanged). Deleting the active preset leaves the lights as they are with nothing selected.
+  ↻ on the preset being edited resets the draft (asking first if unsaved) and keeps the editor open. Rows also reorder with ↑/↓ while the drag handle has focus. Colour swatches use the native picker: Chrome previews while picking; Firefox on Linux applies the colour when its dialog closes (accepted at the gate).
+  Import asks to discard an unsaved draft and closes the editor; Replace clears the selection if the active preset is gone. A corrupt presets document is not overwritten until the user changes something (the seed is used meanwhile).
 - Live values (Phase 5) never write back to the preset. Each has a reset button that returns it to the preset value.
 - The global brightness ↻ sets it to 100%.
 - Blackout (`B` key or button) sends `G 0` without changing the global slider. Toggling blackout off resends the slider value. While blackout is on, show a clearly visible indicator.
@@ -257,7 +263,7 @@ Below it, four columns from left to right:
 3. **Current** (Phase 5) above **LFO** (Phase 6). Current: Rate (slow…fast) and Brightness (dark…bright) sliders, each with a ↻ reset at its right end. LFO: an Enable toggle at the top right, Destination (dropdown: Rate / Brightness), Rate (slow…fast, log 0.05–5 Hz) and Intensity (low…high = depth). Before their phase lands, these panels are left out (not shown disabled).
 4. **Brightness** (global). A tall vertical slider (top = 100%, bottom = off) with a ↻ (100%) below it.
 
-The sketch's ↻ buttons are dark filled squares with a white icon. Reuse one `ResetButton` component everywhere.
+↻ buttons are plain icon buttons that match the rest of the UI, not the sketch's dark filled squares (changed at the Phase 3 gate). Reuse one `ResetButton` component everywhere.
 
 **Testing:** Vitest unit tests for every store, the encoder, the registry and import/export validation, plus component tests (@vue/test-utils).
 Playwright e2e uses an injected fake `navigator.serial` that speaks the protocol (wake → `!`, checksum, `OK`) and records decoded state.
