@@ -8,6 +8,8 @@ Three strips of seventeen LEDs wrapping horizontally around a cylinder. One Ardu
 
 FastLED is used to control the LEDs.
 
+The Arduino is powered over USB, so unplugging the cable turns it and the LEDs off. This is an accepted hardware limitation; nothing needs to handle it. When the cable comes back, the web UI reconnects and restores the current state.
+
 ### Effects
 **Ominous Glow**
 Simple glow effect, all LEDS at the same brightness.

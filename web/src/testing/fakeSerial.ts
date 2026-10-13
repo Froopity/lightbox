@@ -47,7 +47,7 @@ export class FakePort extends EventTarget implements SerialPort {
     this.readable = this.writable = this.controller = null
   }
 
-  /** The device keeps its state, like the Arduino on external power. */
+  /** The real board powers off; either way open() resets it, so the UI must resend its state. */
   unplug(): void {
     this.plugged = false
     this.controller?.error(new DOMException('The device has been lost.', 'NetworkError'))
