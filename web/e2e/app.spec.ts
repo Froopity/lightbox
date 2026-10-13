@@ -8,6 +8,8 @@ const sentLines = (page: Page) => page.evaluate(() => window.__fake.lines())
 const rows = (page: Page) => page.getByTestId('preset-row')
 const editor = (page: Page) => page.getByRole('form', { name: 'Preset editor' })
 const dialog = (page: Page) => page.getByRole('dialog')
+/** Seeded after Ominous Glow and Alarm. */
+const PHASE4_ROWS = [/Two-tone Glow/, /Vertical Pulse/, /Lighthouse/]
 
 async function connect(page: Page): Promise<void> {
   await page.goto('/')
@@ -25,7 +27,7 @@ test('connects and puts the first preset on the board', async ({ page }) => {
   expect((await sentLines(page)).map((l) => l[0])).toEqual(['H', 'P', 'G', '?'])
   expect(await fakeState(page)).toMatchObject({ style: 0, rate: 500, brightness: 800, global: 1000, colors: ['#9966CC', '#000000'] })
   await expect(page.getByRole('alert')).toHaveCount(0)
-  await expect(rows(page)).toHaveText([/Ominous Glow/, /Alarm/])
+  await expect(rows(page)).toHaveText([/Ominous Glow/, /Alarm/, ...PHASE4_ROWS])
   await expect(page.getByRole('radio', { name: 'Select Ominous Glow' })).toBeChecked()
 })
 
@@ -66,17 +68,17 @@ test('builds presets and switches between them live', async ({ page }) => {
   await expect.poll(() => fakeState(page)).toMatchObject({ params: [4, 0, 0, 0] })
   await editor(page).getByRole('button', { name: 'Save' }).click()
   await expect(editor(page)).toHaveCount(0)
-  await expect(rows(page)).toHaveText([/Ominous Glow/, /Alarm/, /Slow red/])
+  await expect(rows(page)).toHaveText([/Ominous Glow/, /Alarm/, ...PHASE4_ROWS, /Slow red/])
   await expect(page.getByRole('radio', { name: 'Select Slow red' })).toBeChecked()
 
   await rows(page).first().click()
   await expect.poll(() => fakeState(page)).toMatchObject({ style: 0 })
   await blur(page)
-  await page.keyboard.press('3')
+  await page.keyboard.press('6')
   await expect.poll(() => fakeState(page)).toMatchObject({ style: 1, colors: ['#FF8800', '#000000'], params: [4, 0, 0, 0] })
 
   await page.reload()
-  await expect(rows(page)).toHaveText([/Ominous Glow/, /Alarm/, /Slow red/])
+  await expect(rows(page)).toHaveText([/Ominous Glow/, /Alarm/, ...PHASE4_ROWS, /Slow red/])
 })
 
 test('✕ puts the lights and the stored preset back', async ({ page }) => {
@@ -88,7 +90,7 @@ test('✕ puts the lights and the stored preset back', async ({ page }) => {
   await expect.poll(() => fakeState(page)).toMatchObject({ colors: ['#00FF00', '#000000'] })
   await editor(page).getByRole('button', { name: 'Close editor and discard changes' }).click()
   await expect.poll(() => fakeState(page)).toMatchObject({ style: 1, colors: ['#FF0000', '#000000'] })
-  await expect(rows(page)).toHaveText([/Ominous Glow/, /Alarm/])
+  await expect(rows(page)).toHaveText([/Ominous Glow/, /Alarm/, ...PHASE4_ROWS])
   await page.reload()
   await page.getByRole('button', { name: 'Edit Alarm' }).click()
   await expect(editor(page).getByLabel('Colour 1')).toHaveValue('#ff0000')
@@ -124,24 +126,35 @@ test('duplicate and delete', async ({ page }) => {
   await connect(page)
   await page.getByRole('button', { name: 'Edit Alarm' }).click()
   await editor(page).getByRole('button', { name: 'Duplicate' }).click()
-  await expect(rows(page)).toHaveText([/Ominous Glow/, /^.*Alarm(?! copy)/, /Alarm copy/])
+  await expect(rows(page)).toHaveText([/Ominous Glow/, /^.*Alarm(?! copy)/, /Alarm copy/, ...PHASE4_ROWS])
   await expect(editor(page).getByLabel('Name')).toHaveValue('Alarm copy')
   await editor(page).getByRole('button', { name: 'Delete' }).click()
   await expect(dialog(page)).toContainText('Delete “Alarm copy”?')
   await dialog(page).getByRole('button', { name: 'Delete' }).click()
-  await expect(rows(page)).toHaveText([/Ominous Glow/, /Alarm/])
+  await expect(rows(page)).toHaveText([/Ominous Glow/, /Alarm/, ...PHASE4_ROWS])
   await expect(page.getByRole('radio', { checked: true })).toHaveCount(0)
+})
+
+test('the Phase 4 styles load from their seeded presets', async ({ page }) => {
+  await connect(page)
+  await rows(page).nth(2).click()
+  await expect.poll(() => fakeState(page)).toMatchObject({ style: 2, colors: ['#FF4000', '#8000FF'] })
+  await rows(page).nth(3).click()
+  await expect.poll(() => fakeState(page)).toMatchObject({ style: 3, colors: ['#9966CC', '#000000'] })
+  await page.getByRole('button', { name: 'Edit Lighthouse' }).click()
+  await editor(page).getByLabel('Front column').fill('9')
+  await expect.poll(() => fakeState(page)).toMatchObject({ style: 4, params: [60, 50, 5, 9] })
 })
 
 test('drag to reorder; numbers follow the order', async ({ page }) => {
   await connect(page)
   await page.getByRole('button', { name: 'Move Alarm (arrow keys)' }).dragTo(rows(page).first())
-  await expect(rows(page)).toHaveText([/Alarm/, /Ominous Glow/])
+  await expect(rows(page)).toHaveText([/Alarm/, /Ominous Glow/, ...PHASE4_ROWS])
   await expect(rows(page).first().locator('.badge')).toHaveText('1')
   await page.getByRole('button', { name: 'Move Alarm (arrow keys)' }).press('ArrowDown')
-  await expect(rows(page)).toHaveText([/Ominous Glow/, /Alarm/])
+  await expect(rows(page)).toHaveText([/Ominous Glow/, /Alarm/, ...PHASE4_ROWS])
   await page.reload()
-  await expect(rows(page)).toHaveText([/Ominous Glow/, /Alarm/])
+  await expect(rows(page)).toHaveText([/Ominous Glow/, /Alarm/, ...PHASE4_ROWS])
 })
 
 test('global brightness scales to off, persists, and ↻ restores 100%', async ({ page }) => {
@@ -192,14 +205,14 @@ test('export, clear storage, import → identical presets', async ({ page }) => 
 
   await page.evaluate(() => localStorage.removeItem('lightbox.presets.v1'))
   await page.reload()
-  await expect(rows(page)).toHaveText([/Ominous Glow/, /Alarm/])
+  await expect(rows(page)).toHaveText([/Ominous Glow/, /Alarm/, ...PHASE4_ROWS])
 
   await page.getByTestId('import-file').setInputFiles(path)
-  await expect(dialog(page)).toContainText('Import 2 presets')
+  await expect(dialog(page)).toContainText('Import 5 presets')
   await dialog(page).getByRole('button', { name: 'Replace' }).click()
-  await expect(dialog(page)).toContainText('Replace all 2 presets with the 2 imported?')
+  await expect(dialog(page)).toContainText('Replace all 5 presets with the 5 imported?')
   await dialog(page).getByRole('button', { name: 'Replace' }).click()
-  await expect(rows(page)).toHaveText([/Ominous Glow/, /Mine/])
+  await expect(rows(page)).toHaveText([/Ominous Glow/, /Mine/, ...PHASE4_ROWS])
   expect(await page.evaluate(() => localStorage.getItem('lightbox.presets.v1'))).toBe(before)
   expect(JSON.parse(await readFile(path, 'utf8'))).toMatchObject({ app: 'lightbox', version: 1 })
 })
@@ -209,11 +222,11 @@ test('import merge appends; a bad file is rejected', async ({ page }) => {
   const exported = JSON.stringify({ app: 'lightbox', version: 1, exportedAt: '', presets: [{ id: 'x', name: 'Imported', style: 'alarm', colors: ['#00FF00'], rate: 0.1, brightness: 0.9, params: { tail: 3 } }] })
   await page.getByTestId('import-file').setInputFiles({ name: 'p.json', mimeType: 'application/json', buffer: Buffer.from(exported) })
   await dialog(page).getByRole('button', { name: 'Merge' }).click()
-  await expect(rows(page)).toHaveText([/Ominous Glow/, /Alarm/, /Imported/])
+  await expect(rows(page)).toHaveText([/Ominous Glow/, /Alarm/, ...PHASE4_ROWS, /Imported/])
   await page.getByTestId('import-file').setInputFiles({ name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from('nope') })
   await expect(dialog(page)).toContainText('Import failed: The file is not valid JSON.')
   await dialog(page).getByRole('button', { name: 'OK' }).click()
-  await expect(rows(page)).toHaveCount(3)
+  await expect(rows(page)).toHaveCount(6)
 })
 
 test('unplug shows the banner; replug reconnects and resends the state', async ({ page }) => {

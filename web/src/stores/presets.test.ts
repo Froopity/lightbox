@@ -4,8 +4,15 @@ import { seedPresets, storedDocument, styleDefaults } from '../presets/preset'
 import { STYLES } from '../styles/registry'
 import { PRESETS_KEY, usePresetsStore } from './presets'
 
-const stored = () => JSON.parse(localStorage.getItem(PRESETS_KEY) ?? 'null') as { version: number; presets: { name: string }[] }
+const stored = () =>
+  JSON.parse(localStorage.getItem(PRESETS_KEY) ?? 'null') as { version: number; presets: { name: string }[]; seeded: string[] }
 const names = (s: ReturnType<typeof usePresetsStore>) => s.presets.map((p) => p.name)
+const allKeys = STYLES.map((st) => st.key)
+/** A store over a saved list with just the Ominous and Alarm defaults. */
+const twoPresets = () => {
+  localStorage.setItem(PRESETS_KEY, storedDocument(seedPresets(['ominous', 'alarm'])))
+  return usePresetsStore()
+}
 
 beforeEach(() => {
   localStorage.clear()
@@ -16,7 +23,36 @@ describe('presets store', () => {
   it('seeds one preset per style on first run and stores them', () => {
     const s = usePresetsStore()
     expect(names(s)).toEqual(STYLES.map((st) => st.name))
-    expect(stored()).toEqual({ version: 1, presets: s.presets })
+    expect(stored()).toEqual({ version: 1, presets: s.presets, seeded: allKeys })
+  })
+
+  it('seeds styles added since the list was saved, once, at the end', () => {
+    // A Phase 3 document: no `seeded`, so Ominous and Alarm count as seeded. The user deleted Ominous.
+    const [, alarm] = seedPresets()
+    localStorage.setItem(PRESETS_KEY, JSON.stringify({ version: 1, presets: [{ ...alarm, name: 'Mine' }] }))
+    const s = usePresetsStore()
+    expect(names(s)).toEqual(['Mine', 'Two-tone Glow', 'Vertical Pulse', 'Lighthouse'])
+    expect(stored().seeded).toEqual(allKeys)
+    expect(stored().presets.map((p) => p.name)).toEqual(names(s))
+
+    const pulse = s.presets.find((p) => p.style === 'pulse')
+    if (!pulse) throw new Error('seed')
+    s.remove(pulse.id)
+    setActivePinia(createPinia())
+    expect(names(usePresetsStore())).toEqual(['Mine', 'Two-tone Glow', 'Lighthouse'])
+  })
+
+  it('does not rewrite the document when nothing new was seeded', () => {
+    const text = storedDocument(seedPresets(['alarm']), ['ominous', 'alarm', 'twotone', 'pulse', 'lighthouse', 'future'])
+    localStorage.setItem(PRESETS_KEY, text)
+    expect(names(usePresetsStore())).toEqual(['Alarm'])
+    expect(localStorage.getItem(PRESETS_KEY)).toBe(text)
+  })
+
+  it('keeps seeded keys it does not know when it writes', () => {
+    localStorage.setItem(PRESETS_KEY, storedDocument([], ['ominous', 'alarm', 'future']))
+    usePresetsStore()
+    expect(stored().seeded).toEqual(['ominous', 'alarm', 'future', 'twotone', 'pulse', 'lighthouse'])
   })
 
   it('loads what is stored', () => {
@@ -37,12 +73,15 @@ describe('presets store', () => {
   })
 
   it('repairs entries without crashing', () => {
-    localStorage.setItem(PRESETS_KEY, JSON.stringify({ version: 1, presets: [{ style: 'alarm', rate: 7 }, null, { style: '??' }] }))
+    localStorage.setItem(
+      PRESETS_KEY,
+      JSON.stringify({ version: 1, presets: [{ style: 'alarm', rate: 7 }, null, { style: '??' }], seeded: allKeys }),
+    )
     expect(usePresetsStore().presets).toMatchObject([{ name: 'Alarm', style: 'alarm', rate: 1 }])
   })
 
   it('adds at the end or after a preset, with a new id', () => {
-    const s = usePresetsStore()
+    const s = twoPresets()
     const [first] = s.presets
     const a = s.add({ ...styleDefaults(), name: 'End' })
     const b = s.add({ ...styleDefaults(), name: 'Second' }, first?.id)
@@ -52,7 +91,7 @@ describe('presets store', () => {
   })
 
   it('updates, removes and moves', () => {
-    const s = usePresetsStore()
+    const s = twoPresets()
     const [o, a] = s.presets.map((p) => p.id)
     if (!o || !a) throw new Error('seed')
     s.update(o, { ...styleDefaults(), name: 'Glow' })
@@ -75,7 +114,7 @@ describe('presets store', () => {
   })
 
   it('merges imports with fresh ids and replaces on request', () => {
-    const s = usePresetsStore()
+    const s = twoPresets()
     const imported = s.presets.map((p) => ({ ...p, name: `${p.name} 2` }))
     s.merge(imported)
     expect(names(s)).toEqual(['Ominous Glow', 'Alarm', 'Ominous Glow 2', 'Alarm 2'])

@@ -19,6 +19,14 @@ inline uint8_t scale8(uint8_t i, uint8_t scale) {
   return (uint8_t)(((uint16_t)i * (1 + (uint16_t)scale)) >> 8);
 }
 
+// Like scale8, but never scales a non-zero value to zero (FastLED scale8_video).
+inline uint8_t scale8Video(uint8_t i, uint8_t scale) {
+  return (uint8_t)((((uint16_t)i * scale) >> 8) + (i && scale ? 1 : 0));
+}
+
+// Squares the curve, for a perceptual fade (FastLED dim8_video).
+inline uint8_t dim8Video(uint8_t x) { return scale8Video(x, x); }
+
 // Linear blend from a (amountOfB = 0) towards b (FastLED blend8).
 inline uint8_t blend8(uint8_t a, uint8_t b, uint8_t amountOfB) {
   uint16_t partial = (uint16_t)((a << 8) | b);

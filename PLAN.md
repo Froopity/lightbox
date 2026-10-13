@@ -105,6 +105,7 @@ Each frame, compute `dt_us` from `micros()`. Phase accumulators are `uint32_t`, 
 `phasePerUs = 2^32 / period_us`, computed when the period changes; `phase += dt_us * phasePerUs`.
 Implementation: the increment is held in Q8 (`2^40 / period_us`, rounded) with 8 fractional phase bits, so long periods stay exact to ~10 ppm.
 Measured on hardware (Phase 1): Ominous ≈ 400 fps, Alarm ≈ 300 fps; `micros()` tracks host time to 0.04% despite `show()` disabling interrupts.
+Phase 4, at full rate (`make smoke` reports these): Two-tone ≈ 246 fps, Pulse ≈ 322 fps, Lighthouse ≈ 265 fps.
 Because rate changes alter the increment and never the phase, rate edits and LFO modulation never cause visual jumps.
 Target ≥ 100 fps. Report the measured fps in the `?` dump.
 
@@ -157,7 +158,12 @@ Tests: head columns match ⌊17φ⌋ and ⌊17φ + 8.5⌋; L=0 gives exactly two
 Each LED i (all 51 independently) has its own phase φᵢ (uint16) and multiplier mᵢ ∈ [0.5, 1.5] (uint8, stored as m·128).
 Its period is `base · mᵢ`, with base 6 s → 1 s. When φᵢ wraps, re-roll mᵢ uniformly (seeded PRNG, e.g. xorshift16).
 Colour: `blend(C, C2, (1 − cos 2πφᵢ)/2)` in RGB. At a wrap the LED is exactly `C`, so re-rolling never causes a jump.
-Initial φᵢ are random, so LEDs start de-synchronised. RAM: 51 × 3 = 153 B. Hold it in a union shared with other effects' state.
+Initial φᵢ are random, so LEDs start de-synchronised.
+Implementation (Phase 4): each LED stores a 24-bit phase (uint16 + 8 fractional bits, so slow LEDs keep exact periods) and its
+speed 1/mᵢ in Q7 instead of mᵢ, so the per-frame update needs no division. mᵢ·128 is rolled uniformly in 65..192 and the speed
+rounded up, which keeps 1/speed inside [0.5, 1.5]. RAM: 51 × 4 = 204 B. It's a plain `Engine` member: the other effects are
+pure functions of φ, so there is nothing to share a union with. The xorshift16 state carries on across `P` loads, so each load
+starts from a different pattern. A frame gap is clamped to one base cycle.
 Tests: continuity across a wrap; the distribution of mᵢ stays within bounds; the colour stays on the C–C2 line.
 
 ### 3.4 Vertical Pulse (Phase 4) — port of `arduino/wave/wave.ino`
@@ -165,6 +171,8 @@ Total cycle T (2.8 s → 0.7 s; the log midpoint 1.4 s matches wave.ino's 900 + 
 From wave.ino ratios: `womp = T·9/14`, `gap = T·5/14`, `stagger = T·1.6/14`, `waveLen = womp − 2·stagger`.
 Row r starts at `r·stagger`. Its local progress `p = (t − r·stagger)/waveLen`. If 0 ≤ p < 1, `I_r = dim8_video(sin8(128p))`; otherwise 0 (black, no floor, per the decision).
 All columns in a row are identical. Rows climb from 0 (bottom) to 2.
+`sin8` and `dim8_video` are ported exactly from FastLED. As in wave.ino, `sin8(128p)` runs 128 → 255 → 128 (not from 0), so
+each row switches on at ≈ 65/255, swells to full and drops from ≈ 68/255 to black: a faithful port, including that edge.
 Tests: row order of peaks is 0, 1, 2; all rows are dark during the gap; matches wave.ino output at T = 1.4 s.
 
 ### 3.5 Lighthouse (Phase 4)
@@ -177,6 +185,9 @@ Flash, with s = `flash` ∈ [0,1]: `m = (1 − s) + s · ((1 + cos 2πθ)/2)³`.
 `I(c) = f(d(c)) · m`. All rows are identical.
 Period 10 s → 2 s.
 Tests: monotonic θ; at k=0 the speed is constant; with s=0, m≡1; the peak brightness is at the front column when s>0.
+Implementation (Phase 4): θ and m use `sinSmooth` (`trig.h`, a corrected parabola, error < 0.1%, exact at 0 and ±1) rather
+than `sin16`. `sin16`'s slope jumps at its table sections made θ step back slightly at k = 0.9, and its peak is 0.4% low,
+so the flash never reached full. Both are evaluated once per frame; the beam profile uses `cos16` per column.
 
 ## 4. Serial protocol
 
@@ -229,7 +240,10 @@ On the `disconnect` event, show a red "Disconnected — reconnecting" banner. On
 Use `?` after connecting to verify the firmware state matches the UI.
 
 **Stores:**
-- `presets`: localStorage key `lightbox.presets.v1` holding `{ version: 1, presets: Preset[] }`.
+- `presets`: localStorage key `lightbox.presets.v1` holding `{ version: 1, presets: Preset[], seeded: StyleKey[] }`.
+  `seeded` lists the styles whose default preset has been added once. On load, every style not in it gets its default
+  preset appended to the end of the list, once, so new styles appear without bringing back presets the user deleted.
+  A document without `seeded` (written before Phase 4) counts as `["ominous", "alarm"]`. Unknown keys are kept.
   `Preset = { id: string (uuid), name, style: StyleKey, colors: string[] ("#rrggbb"), rate: number, brightness: number, params: Record<string, number> (wire units) }`.
   Seed one default preset per available style when the key is absent. Validate on load; reject or repair malformed entries without crashing.
 - `live`: active preset id, live rate, live brightness. Not persisted.
@@ -313,7 +327,7 @@ Within a phase, firmware and web work can run as two parallel agents once the `s
 ### Phase 4 — More effects
 1. Add ids 2–4 to `styles.json`, regenerate, and implement §3.3–§3.5 with tests. Recheck the RAM budget (Two-tone state in the union).
 2. The UI picks them up from the registry automatically. Add default presets for the new styles, seeding only those missing so existing user presets are kept.
-3. `demo` env cycles all five styles.
+3. `demo` env cycles all five styles (10 s each, in id order), stepping rate 0 → 0.5 → 1 after each round.
 4. **Gate checklist (expect tuning iterations):** Two-tone randomness/spread; Pulse vs. the original wave.ino; Lighthouse whip/flash/width at several settings, and which column is the front. Record final defaults in `styles.json` and §3.
 
 ### Phase 5 — Live "Current" panel

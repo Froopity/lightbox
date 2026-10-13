@@ -145,7 +145,7 @@ describe('editing', () => {
     editor.setColor(0, '#112233')
     editor.duplicate()
     const names = presets.presets.map((p) => p.name)
-    expect(names).toEqual(['Ominous Glow', 'Ominous Glow copy', 'Alarm'])
+    expect(names).toEqual(['Ominous Glow', 'Ominous Glow copy', 'Alarm', 'Two-tone Glow', 'Vertical Pulse', 'Lighthouse'])
     const copy = presets.presets[1]
     expect(copy?.colors).toEqual(['#112233'])
     expect(presets.byId(ominous.id)).toEqual(ominous)
@@ -193,7 +193,7 @@ describe('new presets', () => {
     editor.setStyle('alarm')
     editor.setColor(0, '#0000ff')
     editor.discard()
-    expect(presets.presets).toHaveLength(2)
+    expect(presets.presets).toHaveLength(5)
     expect(live.activeId).toBe(alarm.id)
     expect(lastP()).toMatchObject({ style: 1, colors: ['#FF0000'] })
   })

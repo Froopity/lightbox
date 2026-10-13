@@ -2,7 +2,7 @@
 // Effects render straight into leds[] through the layout map (no second frame buffer).
 // Commands arrive over the wake/CTS handshake (PLAN.md §4, firmware/NOTES.md): show() blocks interrupts,
 // so the host sends one wake byte, waits for '!', and only then sends its line while we stop rendering.
-// With -DDEMO (env:demo): cycles Ominous → Alarm every 10 s, stepping rate 0 → 0.5 → 1 each cycle,
+// With -DDEMO (env:demo): cycles through every style, 10 s each, stepping rate 0 → 0.5 → 1 each round,
 // and logs each step with the measured fps over serial.
 #include <Arduino.h>
 #include <FastLED.h>
@@ -59,12 +59,14 @@ static const uint16_t DEMO_RATES[] = {0, 500, 1000};
 static uint8_t demoStep;
 static uint32_t demoStartUs;
 
+static const uint8_t DEMO_STEPS = core::STYLE_COUNT * 3;
+
 static void demoApply() {
-  uint8_t style = demoStep % 2 == 0 ? core::STYLE_OMINOUS : core::STYLE_ALARM;
-  engine.setRate(DEMO_RATES[(demoStep / 2) % 3]);
+  uint8_t style = demoStep % core::STYLE_COUNT;
+  engine.setRate(DEMO_RATES[demoStep / core::STYLE_COUNT]);
   engine.loadStyle(style);
-  Serial.print(F("demo: "));
-  Serial.print(style == core::STYLE_OMINOUS ? F("ominous") : F("alarm"));
+  Serial.print(F("demo: style "));
+  Serial.print(style);
   Serial.print(F(" rate "));
   Serial.print(engine.rate());
   Serial.print(F(" fps "));
@@ -106,7 +108,7 @@ void loop() {
 #else
   if (now - demoStartUs >= DEMO_STEP_US) {
     demoStartUs += DEMO_STEP_US;
-    demoStep = (uint8_t)((demoStep + 1) % 6);
+    demoStep = (uint8_t)((demoStep + 1) % DEMO_STEPS);
     demoApply();
   }
 #endif

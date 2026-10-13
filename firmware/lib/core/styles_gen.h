@@ -8,7 +8,7 @@ namespace core {
 
 constexpr uint8_t MAX_COLORS = 2;
 constexpr uint8_t MAX_PARAMS = 4;
-constexpr uint8_t STYLE_COUNT = 2;
+constexpr uint8_t STYLE_COUNT = 5;
 
 struct ParamDef {
   uint16_t wireMin, wireMax, def;
@@ -25,12 +25,18 @@ struct StyleDef {
 enum StyleId : uint8_t {
   STYLE_OMINOUS = 0,
   STYLE_ALARM = 1,
+  STYLE_TWOTONE = 2,
+  STYLE_PULSE = 3,
+  STYLE_LIGHTHOUSE = 4,
 };
 
 // In flash on AVR: read entries with styleDef() (style.h), never index directly.
 constexpr StyleDef STYLES[STYLE_COUNT] CORE_PROGMEM = {
     {0, 1, 8000, 1500, 4, 255, 0, {0x9966CC, 0x000000}, {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}},  // Ominous Glow
     {1, 1, 2000, 300, 4, 255, 1, {0xFF0000, 0x000000}, {{0, 16, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}},  // Alarm
+    {2, 2, 6000, 1000, 4, 255, 0, {0xFF4000, 0x8000FF}, {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}},  // Two-tone Glow
+    {3, 1, 2800, 700, 4, 255, 0, {0x9966CC, 0x000000}, {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}},  // Vertical Pulse
+    {4, 1, 10000, 2000, 4, 255, 4, {0xFFD8A0, 0x000000}, {{0, 90, 60}, {0, 100, 50}, {2, 9, 5}, {0, 16, 0}}},  // Lighthouse
 };
 
 }  // namespace core

@@ -57,7 +57,7 @@ describe('App', () => {
     const w = await connected()
     await w.findAll('[data-testid="preset-row"]')[1]?.trigger('click')
     await vi.waitFor(() => expect(state().style).toBe(1))
-    expect(w.findAll('[role="radio"]').map((r) => r.attributes('aria-checked'))).toEqual(['false', 'true'])
+    expect(w.findAll('[role="radio"]').map((r) => r.attributes('aria-checked'))).toEqual(['false', 'true', 'false', 'false', 'false'])
   })
 
   it('edits a preset live and saves it', async () => {

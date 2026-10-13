@@ -65,6 +65,39 @@ static void test_render_dispatches_on_style() {
   for (uint8_t c = 0; c < COLS; c++) TEST_ASSERT_EQUAL_UINT8(c == 0 || c == 8 ? 255 : 0, t.f.get(2, c).r);
 }
 
+static void test_render_dispatches_new_styles() {
+  TestFrame t;
+  Engine e;
+  e.loadStyle(STYLE_PULSE);
+  e.render(t.f);  // phase 0: row 0 just starting its swell, rows above still dark
+  TEST_ASSERT_EQUAL_UINT8(scale8(0x66, pulse::intensity(0, 0)), t.f.get(0, 3).g);
+  TEST_ASSERT_TRUE(t.f.get(0, 3).g > 0);
+  TEST_ASSERT_EQUAL_UINT8(0, t.f.get(1, 3).g);
+
+  e.loadStyle(STYLE_LIGHTHOUSE);
+  TEST_ASSERT_EQUAL_UINT16(60, e.param(0));
+  TEST_ASSERT_EQUAL_UINT16(5, e.param(2));
+  e.render(t.f);  // phase 0: the beam is on the front column (0) at full flash
+  TEST_ASSERT_EQUAL_HEX32(0xFFD8A0, e.color(0));
+  TEST_ASSERT_EQUAL_UINT8(0xFF, t.f.get(1, 0).r);
+  TEST_ASSERT_EQUAL_UINT8(0, t.f.get(1, 8).r);
+
+  e.loadStyle(STYLE_TWOTONE);
+  e.render(t.f);
+  Rgb want = blend(rgbFrom(0xFF4000), rgbFrom(0x8000FF), twotone::State::mix(e.twotone().phase(20)));
+  TEST_ASSERT_EQUAL_UINT8(want.b, t.f.get(1, 3).b);  // LED 20 = row 1, column 3
+}
+
+static void test_twotone_reload_rerolls_and_tick_advances() {
+  Engine e;
+  e.loadStyle(STYLE_TWOTONE);
+  uint16_t first = e.twotone().phase(0);
+  e.tick(10000);
+  TEST_ASSERT_NOT_EQUAL(first, e.twotone().phase(0));
+  e.loadStyle(STYLE_TWOTONE);  // P resets effect state: a fresh random start
+  TEST_ASSERT_NOT_EQUAL(first, e.twotone().phase(0));
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_boot_defaults);
@@ -73,5 +106,7 @@ int main() {
   RUN_TEST(test_controls_clamped);
   RUN_TEST(test_rate_change_keeps_phase);
   RUN_TEST(test_render_dispatches_on_style);
+  RUN_TEST(test_render_dispatches_new_styles);
+  RUN_TEST(test_twotone_reload_rerolls_and_tick_advances);
   return UNITY_END();
 }

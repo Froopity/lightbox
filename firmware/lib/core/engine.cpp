@@ -1,7 +1,9 @@
 #include "engine.h"
 
 #include "effects/alarm.h"
+#include "effects/lighthouse.h"
 #include "effects/ominous.h"
+#include "effects/pulse.h"
 
 namespace core {
 
@@ -20,6 +22,13 @@ void Engine::loadStyle(uint8_t style) {
   rates_.build(def_.periodSlowMs, def_.periodFastMs);
   inc_ = rates_.inc(rate_);
   phase_.reset();
+  if (style_ == STYLE_TWOTONE) twotone_.reset();
+}
+
+void Engine::tick(uint32_t dtUs) {
+  phase_.advance(dtUs, inc_);
+  // Two-tone LEDs run off the base period: this frame's progress in 2^24 units of it.
+  if (style_ == STYLE_TWOTONE) twotone_.advance((uint32_t)(((uint64_t)dtUs * inc_) >> 16));
 }
 
 void Engine::setRate(uint16_t r) {
@@ -43,6 +52,16 @@ void Engine::render(Frame& f) const {
   switch (style_) {
     case STYLE_ALARM:
       alarm::render(f, phase_.value, c0, (uint8_t)params_[0]);
+      break;
+    case STYLE_TWOTONE:
+      twotone_.render(f, c0, rgbFrom(colors_[1]));
+      break;
+    case STYLE_PULSE:
+      pulse::render(f, phase_.value, c0);
+      break;
+    case STYLE_LIGHTHOUSE:
+      lighthouse::render(f, phase_.value, c0,
+                         lighthouse::Params{(uint8_t)params_[0], (uint8_t)params_[1], (uint8_t)params_[2], (uint8_t)params_[3]});
       break;
     case STYLE_OMINOUS:
     default:

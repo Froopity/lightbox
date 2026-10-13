@@ -47,10 +47,13 @@ export function styleDefaults(style: StyleSpec = firstStyle()): PresetData {
   }
 }
 
-/** One default preset per style, seeded on first run. */
-export function seedPresets(): Preset[] {
-  return STYLES.map((s) => ({ id: newId(), ...styleDefaults(s) }))
+/** One default preset per style (or per listed style key), seeded on first run. */
+export function seedPresets(keys: readonly string[] = STYLES.map((s) => s.key)): Preset[] {
+  return STYLES.filter((s) => keys.includes(s.key)).map((s) => ({ id: newId(), ...styleDefaults(s) }))
 }
+
+/** Styles every Phase 3 install had seeded, for documents written before `seeded` existed. */
+export const LEGACY_SEEDED: readonly string[] = ['ominous', 'alarm']
 
 export function clonePreset<T extends PresetData>(p: T): T {
   return { ...p, colors: [...p.colors], params: { ...p.params } }
@@ -121,20 +124,30 @@ export function repairList(raw: unknown[]): Preset[] {
   return out
 }
 
+/**
+ * The localStorage document. `seeded` lists the style keys whose default preset has been added once, so
+ * styles added later get theirs without bringing back presets the user deleted.
+ */
+export interface Stored {
+  presets: Preset[]
+  seeded: string[]
+}
+
 /** Reads the localStorage value; null when it is missing or not a v1 presets document. */
-export function parseStored(text: string | null): Preset[] | null {
+export function parseStored(text: string | null): Stored | null {
   if (text === null) return null
   try {
     const doc: unknown = JSON.parse(text)
     if (!isRecord(doc) || doc.version !== STORAGE_VERSION || !Array.isArray(doc.presets)) return null
-    return repairList(doc.presets)
+    const seeded = Array.isArray(doc.seeded) ? doc.seeded.filter((k): k is string => typeof k === 'string') : [...LEGACY_SEEDED]
+    return { presets: repairList(doc.presets), seeded }
   } catch {
     return null
   }
 }
 
-export function storedDocument(presets: Preset[]): string {
-  return JSON.stringify({ version: STORAGE_VERSION, presets })
+export function storedDocument(presets: Preset[], seeded: readonly string[] = STYLES.map((s) => s.key)): string {
+  return JSON.stringify({ version: STORAGE_VERSION, presets, seeded })
 }
 
 export interface ExportFile {

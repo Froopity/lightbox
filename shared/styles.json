@@ -23,6 +23,47 @@
       "bMax": 255,
       "defaultColors": ["#FF0000"],
       "params": [{ "key": "tail", "label": "Tail", "wireMin": 0, "wireMax": 16, "default": 0, "scale": 0.5, "unit": "cols" }]
+    },
+    {
+      "id": 2,
+      "key": "twotone",
+      "name": "Two-tone Glow",
+      "colors": 2,
+      "periodSlowMs": 6000,
+      "periodFastMs": 1000,
+      "bMin": 4,
+      "bMax": 255,
+      "defaultColors": ["#FF4000", "#8000FF"],
+      "params": []
+    },
+    {
+      "id": 3,
+      "key": "pulse",
+      "name": "Vertical Pulse",
+      "colors": 1,
+      "periodSlowMs": 2800,
+      "periodFastMs": 700,
+      "bMin": 4,
+      "bMax": 255,
+      "defaultColors": ["#9966CC"],
+      "params": []
+    },
+    {
+      "id": 4,
+      "key": "lighthouse",
+      "name": "Lighthouse",
+      "colors": 1,
+      "periodSlowMs": 10000,
+      "periodFastMs": 2000,
+      "bMin": 4,
+      "bMax": 255,
+      "defaultColors": ["#FFD8A0"],
+      "params": [
+        { "key": "whip", "label": "Whip", "wireMin": 0, "wireMax": 90, "default": 60, "scale": 0.01 },
+        { "key": "flash", "label": "Flash", "wireMin": 0, "wireMax": 100, "default": 50, "scale": 0.01 },
+        { "key": "width", "label": "Width", "wireMin": 2, "wireMax": 9, "default": 5, "scale": 1, "unit": "cols" },
+        { "key": "front", "label": "Front column", "wireMin": 0, "wireMax": 16, "default": 0, "scale": 1 }
+      ]
     }
   ]
 }

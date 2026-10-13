@@ -93,12 +93,18 @@ async function main(): Promise<void> {
   check(bad === 'ERR 1', `bad checksum replied "${bad}"`)
   console.log('smoke: bad checksum → ERR 1')
 
-  // Idle for a second so the fps sample isn't dragged down by command traffic.
-  await link.exchange(encode({ type: 'P', style: 1, rate: 1000, brightness: 1000, colors: ['#ff0000'], params: [0] }))
-  await sleep(2100)
-  d = await dump(link)
-  check(d.fps >= MIN_FPS, `Alarm at full rate runs ${d.fps} fps, below ${MIN_FPS}`)
-  console.log(`smoke: Alarm at full rate ${d.fps} fps`)
+  // Every style at full rate and its defaults. Idle for two seconds first so the fps sample isn't
+  // dragged down by command traffic.
+  const rates: string[] = []
+  for (const s of STYLES) {
+    const params = s.params.map((p) => p.default)
+    await link.exchange(encode({ type: 'P', style: s.id, rate: 1000, brightness: 1000, colors: s.defaultColors, params }))
+    await sleep(2100)
+    d = await dump(link)
+    check(d.fps >= MIN_FPS, `${s.name} at full rate runs ${d.fps} fps, below ${MIN_FPS}`)
+    rates.push(`${s.name} ${d.fps}`)
+  }
+  console.log(`smoke: fps at full rate: ${rates.join(', ')}`)
 
   await disconnect(conn)
   const again = await connect()

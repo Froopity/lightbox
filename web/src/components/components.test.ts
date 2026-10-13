@@ -48,9 +48,9 @@ describe('PresetList', () => {
     for (let i = 0; i < 9; i++) presets.add({ ...styleDefaults(), name: `P${i}` })
     const w = mount(PresetList)
     const badges = w.findAll('.badge').map((b) => b.text())
-    expect(badges).toHaveLength(11)
+    expect(badges).toHaveLength(14)
     expect(badges.slice(0, 9)).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9'])
-    expect(badges.slice(9)).toEqual(['', ''])
+    expect(badges.slice(9)).toEqual(['', '', '', '', ''])
   })
 
   it('shows ↻ only on the active row, and it reloads the preset', async () => {
@@ -78,9 +78,9 @@ describe('PresetList', () => {
   it('reorders with the keyboard on the handle', async () => {
     const w = mount(PresetList, { attachTo: document.body })
     await w.findAll('.handle')[0]?.trigger('keydown', { key: 'ArrowDown' })
-    expect(names()).toEqual(['Alarm', 'Ominous Glow'])
+    expect(names()).toEqual(['Alarm', 'Ominous Glow', 'Two-tone Glow', 'Vertical Pulse', 'Lighthouse'])
     await w.findAll('.handle')[0]?.trigger('keydown', { key: 'ArrowUp' }) // already at the top
-    expect(names()).toEqual(['Alarm', 'Ominous Glow'])
+    expect(names()).toEqual(['Alarm', 'Ominous Glow', 'Two-tone Glow', 'Vertical Pulse', 'Lighthouse'])
   })
 
   it('reorders by drag and drop', async () => {
@@ -89,7 +89,7 @@ describe('PresetList', () => {
     await w.findAll('.handle')[1]?.trigger('dragstart', { dataTransfer })
     await w.findAll('[data-testid="preset-row"]')[0]?.trigger('dragover')
     await w.findAll('[data-testid="preset-row"]')[0]?.trigger('drop')
-    expect(names()).toEqual(['Alarm', 'Ominous Glow'])
+    expect(names()).toEqual(['Alarm', 'Ominous Glow', 'Two-tone Glow', 'Vertical Pulse', 'Lighthouse'])
   })
 
   it('+ opens a new draft', async () => {
@@ -144,6 +144,18 @@ describe('PresetEditor', () => {
     await w.get('select').setValue('ominous')
     expect(w.text()).not.toContain('Tail')
     expect(sent.at(-1)).toMatchObject({ type: 'P', style: 0 })
+  })
+
+  it('picks up the Phase 4 styles from the registry', async () => {
+    const w = await editAlarm()
+    await w.get('select').setValue('twotone')
+    expect(w.findAll('input[type="color"]').map((c) => (c.element as HTMLInputElement).value)).toEqual(['#ff4000', '#8000ff'])
+    expect(sent.at(-1)).toMatchObject({ type: 'P', style: 2, colors: ['#FF4000', '#8000FF'] })
+
+    await w.get('select').setValue('lighthouse')
+    expect(w.findAll('output').map((o) => o.text())).toEqual(['0.6', '0.5', '5 cols', '0'])
+    for (const label of ['Whip', 'Flash', 'Width', 'Front column']) expect(w.text()).toContain(label)
+    expect(sent.at(-1)).toMatchObject({ type: 'P', style: 4, params: [60, 50, 5, 0] })
   })
 
   it('✕ discards', async () => {
@@ -209,7 +221,7 @@ describe('PresetTransfer', () => {
     expect(dialog.request?.message).toBe('Import 1 preset from presets.json?')
     dialog.answer('merge')
     await flushPromises()
-    expect(names()).toEqual(['Ominous Glow', 'Alarm', 'Imported'])
+    expect(names()).toEqual(['Ominous Glow', 'Alarm', 'Two-tone Glow', 'Vertical Pulse', 'Lighthouse', 'Imported'])
   })
 
   it('replaces after confirming, clearing a vanished active preset', async () => {
@@ -219,7 +231,7 @@ describe('PresetTransfer', () => {
     const dialog = useDialogStore()
     dialog.answer('replace')
     await flushPromises()
-    expect(dialog.request?.message).toBe('Replace all 2 presets with the 1 imported?')
+    expect(dialog.request?.message).toBe('Replace all 5 presets with the 1 imported?')
     dialog.answer('ok')
     await flushPromises()
     expect(names()).toEqual(['Imported'])
@@ -229,7 +241,7 @@ describe('PresetTransfer', () => {
   it('reports a bad file and changes nothing', async () => {
     await importText('{"app":"nope"}')
     expect(useDialogStore().request?.message).toBe('Import failed: The file is not a Lightbox preset export.')
-    expect(names()).toEqual(['Ominous Glow', 'Alarm'])
+    expect(names()).toEqual(['Ominous Glow', 'Alarm', 'Two-tone Glow', 'Vertical Pulse', 'Lighthouse'])
   })
 })
 

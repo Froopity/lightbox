@@ -1,7 +1,9 @@
-// The preset list, persisted in localStorage (PLAN.md §5). Seeded with one preset per style on first run.
+// The preset list, persisted in localStorage (PLAN.md §5). Seeded with one preset per style on first run;
+// a style added later is seeded once, at the end of the list, the first time this version loads.
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { clonePreset, newId, parseStored, seedPresets, storedDocument, type Preset, type PresetData } from '../presets/preset'
+import { STYLES } from '../styles/registry'
 
 export const PRESETS_KEY = 'lightbox.presets.v1'
 
@@ -16,13 +18,18 @@ function readStorage(): string | null {
 export const usePresetsStore = defineStore('presets', () => {
   const stored = readStorage()
   const loaded = parseStored(stored)
-  const presets = ref<Preset[]>(loaded ?? seedPresets())
-  // Seed on first run only. A corrupt document is left alone until the user changes something.
-  if (stored === null) persist()
+  const allKeys = STYLES.map((s) => s.key)
+  const missing = loaded ? allKeys.filter((k) => !loaded.seeded.includes(k)) : []
+  const presets = ref<Preset[]>(loaded ? [...loaded.presets, ...seedPresets(missing)] : seedPresets())
+  // Keep keys of styles this build doesn't know (yet), in case the document is opened by a newer one.
+  const seeded = [...new Set([...(loaded?.seeded ?? []), ...allKeys])]
+  // Write on first run or when new styles were seeded. A corrupt document is left alone until the user
+  // changes something.
+  if (stored === null || missing.length > 0) persist()
 
   function persist(): void {
     try {
-      localStorage.setItem(PRESETS_KEY, storedDocument(presets.value))
+      localStorage.setItem(PRESETS_KEY, storedDocument(presets.value, seeded))
     } catch {
       // storage full or disabled: the list still works for this session
     }

@@ -6,6 +6,7 @@
 #include "frame.h"
 #include "style.h"
 #include "timing.h"
+#include "effects/twotone.h"
 
 namespace core {
 
@@ -24,7 +25,7 @@ class Engine {
   // Value in wire units, clamped to the style's range.
   void setParam(uint8_t idx, uint16_t value);
 
-  void tick(uint32_t dtUs) { phase_.advance(dtUs, inc_); }
+  void tick(uint32_t dtUs);
   void render(Frame& f) const;
   // Value for FastLED.setBrightness().
   uint8_t outputBrightness() const;
@@ -38,11 +39,14 @@ class Engine {
   uint8_t paramCount() const { return def_.paramCount; }
   uint32_t phase() const { return phase_.value; }
   PhaseInc inc() const { return inc_; }
+  const twotone::State& twotone() const { return twotone_; }
 
  private:
   StyleDef def_;
   RateMap rates_;
   Phase phase_;
+  // Two-tone is the only effect with state; the others are pure functions of the main phase.
+  twotone::State twotone_;
   PhaseInc inc_ = 0;
   uint32_t colors_[MAX_COLORS] = {};
   uint16_t params_[MAX_PARAMS] = {};

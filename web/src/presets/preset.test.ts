@@ -24,6 +24,12 @@ describe('seedPresets', () => {
     expect(seeded.map((p) => p.name)).toEqual(STYLES.map((s) => s.name))
     expect(new Set(seeded.map((p) => p.id)).size).toBe(seeded.length)
     expect(seeded[1]).toMatchObject({ colors: ['#FF0000'], rate: 0.5, brightness: 0.8, params: { tail: 0 } })
+    expect(seeded[2]).toMatchObject({ name: 'Two-tone Glow', colors: ['#FF4000', '#8000FF'], params: {} })
+    expect(seeded[4]).toMatchObject({ name: 'Lighthouse', params: { whip: 60, flash: 50, width: 5, front: 0 } })
+  })
+
+  it('seeds only the listed styles, in registry order', () => {
+    expect(seedPresets(['lighthouse', 'twotone']).map((p) => p.style)).toEqual(['twotone', 'lighthouse'])
   })
 })
 
@@ -68,7 +74,11 @@ describe('repairList', () => {
 describe('storage document', () => {
   it('round-trips', () => {
     const presets = seedPresets()
-    expect(parseStored(storedDocument(presets))).toEqual(presets)
+    expect(parseStored(storedDocument(presets, ['alarm', 'future']))).toEqual({ presets, seeded: ['alarm', 'future'] })
+  })
+
+  it('treats a document without `seeded` as having seeded the Phase 3 styles', () => {
+    expect(parseStored(JSON.stringify({ version: 1, presets: [] }))?.seeded).toEqual(['ominous', 'alarm'])
   })
 
   it.each([null, '', 'not json', '[]', '{"version":2,"presets":[]}', '{"version":1}'])('reads %j as missing', (text) => {
@@ -76,7 +86,7 @@ describe('storage document', () => {
   })
 
   it('repairs entries inside a valid document', () => {
-    expect(parseStored(JSON.stringify({ version: 1, presets: [alarm, 42] }))).toHaveLength(1)
+    expect(parseStored(JSON.stringify({ version: 1, presets: [alarm, 42] }))?.presets).toHaveLength(1)
   })
 })
 

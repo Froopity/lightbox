@@ -8,4 +8,7 @@
 #include "timing.h"
 #include "trig.h"
 #include "effects/alarm.h"
+#include "effects/lighthouse.h"
 #include "effects/ominous.h"
+#include "effects/pulse.h"
+#include "effects/twotone.h"
