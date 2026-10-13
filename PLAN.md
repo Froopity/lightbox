@@ -16,7 +16,8 @@ Read all of it before starting any phase.
 | Background | Unlit LEDs on moving effects are **black** (no brightness floor). |
 | Firmware toolchain | PlatformIO. `nano` env (hardware) + `native` env (host unit tests). |
 | Web | Vue 3 + TypeScript (strict) + Vite, plain hand-written CSS, native inputs. Served locally (`vite dev` / `vite preview`) in Chrome. Dark, stage-friendly UI. |
-| Presets | localStorage; export/import as a JSON file. Create, edit, delete (confirm), duplicate, drag to reorder; defaults seeded on first run. |
+| Presets | localStorage; export/import as a JSON file. Create, edit, delete (confirm), duplicate, drag to reorder; defaults seeded on first run. Editor edits are previewed live and stored only on **Save** (✕ discards). |
+| UI layout | Follows the sketch `docs/UI design.png` (same content in `docs/UI design.svg`), agreed 2026-10-13. See §5 Layout. |
 | Shortcuts | `1`–`9` select preset by list position; `B` toggles blackout; arrows nudge live values (Phase 5). |
 | Disconnect | The Arduino is powered over USB, so unplugging it turns the LEDs off (accepted hardware limitation, no special handling). UI shows a banner, reconnects automatically when the port comes back, and resends the full state. |
 | LFO | Runs in firmware. Sine only. 0.05–5 Hz, depth 0–100%. Targets either rate or brightness. |
@@ -237,15 +238,26 @@ Use `?` after connecting to verify the firmware state matches the UI.
 
 **Rules:**
 - Selecting a preset, or opening its editor, makes it active: send `P`, set live rate/brightness to the preset values, and turn the LFO off.
-- Editing the active preset autosaves and sends each change live. Rate/brightness edits in the editor also update the live values.
+- The editor works on a draft copy. Each change is sent live so the lights preview it, and rate/brightness edits also update the live values. Nothing is stored until **Save**, which writes the draft to the preset store and closes the editor.
+  **✕** discards the draft, closes the editor and reloads the saved preset (sends `P`). `+` opens a draft with the first style's defaults; it becomes a preset only when saved (✕ creates nothing).
+  Selecting another preset, opening another editor, or pressing `1`–`9` while the draft has unsaved changes asks "Discard unsaved changes?" first.
+- The ↻ on the active preset row reloads that preset: it sends `P` (live rate/brightness back to the preset values, effect state reset, LFO off).
 - Live values (Phase 5) never write back to the preset. Each has a reset button that returns it to the preset value.
+- The global brightness ↻ sets it to 100%.
 - Blackout (`B` key or button) sends `G 0` without changing the global slider. Toggling blackout off resends the slider value. While blackout is on, show a clearly visible indicator.
 - Shortcuts are ignored while focus is in a text input. `1`–`9` select the preset at that list position. Arrows (Phase 5): ↑/↓ change brightness ±0.05, ←/→ change rate ±0.05, and holding Shift changes them by ±0.01.
 - Export downloads `lightbox-presets-YYYYMMDD.json` = `{ app: "lightbox", version: 1, exportedAt, presets }`.
   Import validates the file and then asks Merge or Replace. Merge appends imported presets with new ids; Replace asks for confirmation.
 - Style sliders show "slow…fast" and "dark…bright" labels. Algorithm params render from `styles.json` (slider, value shown as wire × scale + unit).
 
-**Layout (dark theme, big hit targets):** preset list on the left (drag handle, number badge 1–9, name, style), with the editor in a side drawer. Main area, top to bottom: connection pill + blackout, Global brightness, Current panel (Phase 5), LFO panel (Phase 6).
+**Layout (dark theme, big hit targets).** It follows the sketch `docs/UI design.png`. A slim top bar holds the connection pill (and the disconnect banner below it), the blackout button and indicator, and Export / Import.
+Below it, four columns from left to right:
+1. **Presets.** A full-height list. Each row has a drag handle, a 1–9 number badge, the name, ✎ (open editor) and a radio showing which preset is active. Clicking the row or its radio selects it. The active row also shows a ↻ (reload preset). The list scrolls, and a `+` (new preset) button sits at its bottom right.
+2. **Edit/Create.** The editor panel, titled with ✕ at the top right: Name (text), Style (dropdown), Colour/s (one swatch per style colour, each opens the native colour picker), Rate (slow…fast), Brightness (dark…bright), then the style's algorithm params. Footer: **Save** (primary), plus Duplicate and Delete (confirm) for existing presets. When no editor is open, the column keeps its width and shows a muted hint ("✎ a preset or + to create one") so the layout never jumps.
+3. **Current** (Phase 5) above **LFO** (Phase 6). Current: Rate (slow…fast) and Brightness (dark…bright) sliders, each with a ↻ reset at its right end. LFO: an Enable toggle at the top right, Destination (dropdown: Rate / Brightness), Rate (slow…fast, log 0.05–5 Hz) and Intensity (low…high = depth). Before their phase lands, these panels are left out (not shown disabled).
+4. **Brightness** (global). A tall vertical slider (top = 100%, bottom = off) with a ↻ (100%) below it.
+
+The sketch's ↻ buttons are dark filled squares with a white icon. Reuse one `ResetButton` component everywhere.
 
 **Testing:** Vitest unit tests for every store, the encoder, the registry and import/export validation, plus component tests (@vue/test-utils).
 Playwright e2e uses an injected fake `navigator.serial` that speaks the protocol (wake → `!`, checksum, `OK`) and records decoded state.
@@ -286,11 +298,11 @@ Within a phase, firmware and web work can run as two parallel agents once the `s
 5. **Gate checklist:** connect from Chrome; switch effects from the dropdown; unplug and replug USB → banner while unplugged (LEDs go off: USB power), then the UI reconnects and the LEDs come back in the selected effect.
 
 ### Phase 3 — Presets & global brightness
-1. Presets store, list (select, delete with confirm, duplicate, drag reorder, 1–9 badges), editor drawer (name, style dropdown, colour pickers per style colour count, rate, brightness, params from registry). Selecting or opening a preset activates it. Live autosave.
+1. The four-column layout from §5 (Current/LFO columns absent until their phases). Presets store and list (select via row/radio, ↻ reload on the active row, drag reorder, 1–9 badges, `+`), editor panel (name, style dropdown, colour pickers per style colour count, rate, brightness, params from registry; Save / ✕ draft semantics; Duplicate, Delete with confirm). Selecting or opening a preset activates it.
 2. Seed default presets; export/import (§5).
-3. Global brightness slider (persisted), blackout (`B` + button), `1`–`9` shortcuts.
+3. Global brightness vertical slider (persisted) with ↻ to 100%, blackout (`B` + button), `1`–`9` shortcuts (with the unsaved-draft confirm).
 4. Unit, component and e2e tests for all of the above.
-5. **Gate checklist:** build several presets and switch between them live; global brightness scales smoothly to fully off; blackout is instant; export, clear storage, import → identical presets.
+5. **Gate checklist:** the layout matches `docs/UI design.png`; build several presets and switch between them live; edit a preset and press ✕ → the lights and the stored preset return to the saved version; ↻ on the active row restarts it; global brightness scales smoothly to fully off; blackout is instant; export, clear storage, import → identical presets.
 
 ### Phase 4 — More effects
 1. Add ids 2–4 to `styles.json`, regenerate, and implement §3.3–§3.5 with tests. Recheck the RAM budget (Two-tone state in the union).
@@ -299,14 +311,14 @@ Within a phase, firmware and web work can run as two parallel agents once the `s
 4. **Gate checklist (expect tuning iterations):** Two-tone randomness/spread; Pulse vs. the original wave.ino; Lighthouse whip/flash/width at several settings, and which column is the front. Record final defaults in `styles.json` and §3.
 
 ### Phase 5 — Live "Current" panel
-1. Current panel: live rate and brightness sliders with reset-to-preset buttons, sending `R`/`B`. Never mutates the preset.
+1. Current panel (third column, above where LFO goes): live rate and brightness sliders with ↻ reset-to-preset buttons, sending `R`/`B`. Never mutates the preset.
 2. Arrow-key nudges (§5).
 3. Tests: live changes don't touch the stored preset; selecting a preset resets live values; coalescing during fast drags.
 4. **Gate checklist:** sweeping rate during an effect causes no jumps or stutter; reset buttons work; arrow keys work.
 
 ### Phase 6 — LFO
 1. Firmware LFO (§6) + `L` command + `?` fields + native tests (clamping, phase continuity, P turns it off).
-2. LFO panel: on/off toggle, target (rate/brightness), rate (log 0.05–5 Hz), depth. Off by default and on every preset load.
+2. LFO panel (third column, below Current): Enable toggle, Destination (Rate/Brightness), Rate (log 0.05–5 Hz), Intensity (depth). Off by default and on every preset load.
 3. Tests + smoke additions.
 4. **Gate checklist:** brightness wobble and rate wobble feel musical across the range; the LFO keeps running with the browser closed; loading a preset stops it.
 
