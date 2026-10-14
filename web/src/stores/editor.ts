@@ -159,13 +159,13 @@ export const useEditorStore = defineStore('editor', () => {
   function setRate(v: number): void {
     if (!draft.value) return
     draft.value.rate = v
-    live().setRate(v)
+    live().setPresetRate(v)
   }
 
   function setBrightness(v: number): void {
     if (!draft.value) return
     draft.value.brightness = v
-    live().setBrightness(v)
+    live().setPresetBrightness(v)
   }
 
   function setParam(key: string, v: number): void {

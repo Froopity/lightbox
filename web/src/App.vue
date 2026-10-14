@@ -4,12 +4,14 @@ import { storeToRefs } from 'pinia'
 import AppDialog from './components/AppDialog.vue'
 import BlackoutButton from './components/BlackoutButton.vue'
 import ConnectionPill from './components/ConnectionPill.vue'
+import CurrentPanel from './components/CurrentPanel.vue'
 import GlobalBrightness from './components/GlobalBrightness.vue'
 import PresetEditor from './components/PresetEditor.vue'
 import PresetList from './components/PresetList.vue'
 import PresetTransfer from './components/PresetTransfer.vue'
 import { useShortcuts } from './composables/useShortcuts'
 import { useConnectionStore } from './stores/connection'
+import { useEditorStore } from './stores/editor'
 import { useLiveStore } from './stores/live'
 import { usePresetsStore } from './stores/presets'
 
@@ -17,6 +19,7 @@ const connection = useConnectionStore()
 const live = useLiveStore()
 const presets = usePresetsStore()
 const { status } = storeToRefs(connection)
+const { isOpen: editorOpen } = storeToRefs(useEditorStore())
 
 useShortcuts()
 
@@ -57,7 +60,9 @@ onMounted(() => {
           <PresetList />
         </div>
       </section>
+      <!-- While editing, the editor takes the place of Current: you aren't playing live then. -->
       <section
+        v-if="editorOpen"
         class="column"
         aria-labelledby="h-editor"
       >
@@ -66,6 +71,18 @@ onMounted(() => {
         </h2>
         <div class="panel editor">
           <PresetEditor />
+        </div>
+      </section>
+      <section
+        v-else
+        class="column"
+        aria-labelledby="h-current"
+      >
+        <h2 id="h-current">
+          Current
+        </h2>
+        <div class="panel live">
+          <CurrentPanel />
         </div>
       </section>
       <section
@@ -121,7 +138,7 @@ h1 {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(18rem, 1fr) minmax(20rem, 24rem) 8rem;
+  grid-template-columns: minmax(18rem, 1.5fr) minmax(20rem, 1fr) 8rem;
   gap: 1.5rem;
   padding: 1rem 1.5rem 1.5rem;
 }
@@ -149,6 +166,12 @@ h2 {
   border: 1px solid var(--border);
   border-radius: 1rem;
   background: var(--panel);
+}
+
+.panel.live {
+  /* Sized to its sliders; the LFO panel goes below it (Phase 6). */
+  flex: none;
+  padding: 1.25rem;
 }
 
 .panel.editor {

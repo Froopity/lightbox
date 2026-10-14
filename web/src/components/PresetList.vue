@@ -45,8 +45,9 @@ function onDragEnd(): void {
 
 async function onHandleKey(e: KeyboardEvent, i: number): Promise<void> {
   const to = e.key === 'ArrowUp' ? i - 1 : e.key === 'ArrowDown' ? i + 1 : null
-  if (to === null || to < 0 || to >= presets.value.length) return
-  e.preventDefault()
+  if (to === null) return
+  e.preventDefault() // also at the ends: the arrow belongs to the handle, not the brightness nudge
+  if (to < 0 || to >= presets.value.length) return
   store.move(i, to)
   await nextTick()
   list.value?.querySelectorAll<HTMLElement>('.handle')[to]?.focus()

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useId } from 'vue'
+import { refuseFocus } from '../composables/useShortcuts'
 // A labelled horizontal slider with end labels ("slow…fast") or a value readout.
+// It never keeps focus, so the arrow keys stay with the live-value shortcuts.
 withDefaults(
   defineProps<{
     label: string
@@ -40,6 +42,8 @@ function onInput(e: Event): void {
         :max="max"
         :step="step"
         :value="modelValue"
+        tabindex="-1"
+        @focus="refuseFocus"
         @input="onInput"
       >
       <slot />

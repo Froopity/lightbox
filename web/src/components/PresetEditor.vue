@@ -136,12 +136,6 @@ const value = (e: Event): string => (e.target as HTMLInputElement | HTMLSelectEl
       </div>
     </div>
   </form>
-  <p
-    v-else
-    class="hint"
-  >
-    ✎ a preset or + to create one
-  </p>
 </template>
 
 <style scoped>
@@ -242,14 +236,5 @@ input[type='color'] {
 
 .secondary button {
   flex: 1;
-}
-
-.hint {
-  display: grid;
-  place-items: center;
-  height: 100%;
-  margin: 0;
-  color: var(--muted);
-  text-align: center;
 }
 </style>

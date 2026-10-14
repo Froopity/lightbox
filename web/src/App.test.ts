@@ -32,10 +32,19 @@ describe('App', () => {
   it('shows the columns from the sketch and a Connect button', async () => {
     const w = mount(App)
     await flushPromises()
-    expect(w.findAll('h2').map((h) => h.text())).toEqual(['Presets', 'Edit/Create', 'Brightness'])
+    expect(w.findAll('h2').map((h) => h.text())).toEqual(['Presets', 'Current', 'Brightness'])
     expect(status(w)).toBe('Not connected')
     expect(w.get('.connection button').text()).toBe('Connect')
-    expect(w.text()).toContain('✎ a preset or + to create one')
+  })
+
+  it('the editor takes the place of Current while it is open', async () => {
+    const w = mount(App)
+    await flushPromises()
+    await w.get('[aria-label="Edit Alarm"]').trigger('click')
+    await flushPromises()
+    expect(w.findAll('h2').map((h) => h.text())).toEqual(['Presets', 'Edit/Create', 'Brightness'])
+    await w.get('[aria-label="Close editor and discard changes"]').trigger('click')
+    expect(w.findAll('h2').map((h) => h.text())).toEqual(['Presets', 'Current', 'Brightness'])
   })
 
   it('connects from the button and puts the first preset on the board', async () => {

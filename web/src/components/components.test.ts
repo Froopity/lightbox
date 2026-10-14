@@ -11,6 +11,7 @@ import { useLiveStore } from '../stores/live'
 import { usePresetsStore } from '../stores/presets'
 import { recordSent } from '../testing/sent'
 import AppDialog from './AppDialog.vue'
+import CurrentPanel from './CurrentPanel.vue'
 import GlobalBrightness from './GlobalBrightness.vue'
 import PresetEditor from './PresetEditor.vue'
 import PresetList from './PresetList.vue'
@@ -79,8 +80,10 @@ describe('PresetList', () => {
     const w = mount(PresetList, { attachTo: document.body })
     await w.findAll('.handle')[0]?.trigger('keydown', { key: 'ArrowDown' })
     expect(names()).toEqual(['Alarm', 'Ominous Glow', 'Two-tone Glow', 'Vertical Pulse', 'Lighthouse'])
-    await w.findAll('.handle')[0]?.trigger('keydown', { key: 'ArrowUp' }) // already at the top
+    const up = new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true })
+    w.findAll('.handle')[0]?.element.dispatchEvent(up) // already at the top
     expect(names()).toEqual(['Alarm', 'Ominous Glow', 'Two-tone Glow', 'Vertical Pulse', 'Lighthouse'])
+    expect(up.defaultPrevented, 'the handle keeps the arrow from nudging brightness').toBe(true)
   })
 
   it('reorders by drag and drop', async () => {
@@ -109,8 +112,8 @@ describe('PresetEditor', () => {
     return w
   }
 
-  it('shows a hint when closed', () => {
-    expect(mount(PresetEditor).text()).toBe('✎ a preset or + to create one')
+  it('renders nothing when closed', () => {
+    expect(mount(PresetEditor).find('form').exists()).toBe(false)
   })
 
   it('renders the style’s fields, params from the registry', async () => {
@@ -184,6 +187,36 @@ describe('GlobalBrightness', () => {
       { type: 'G', global: 500 },
       { type: 'G', global: 1000 },
     ])
+  })
+})
+
+describe('CurrentPanel', () => {
+  it('sends R/B live and ↻ returns each to the preset', async () => {
+    const live = useLiveStore()
+    live.show({ ...styleDefaults(), rate: 0.4, brightness: 0.6 }, null)
+    sent.length = 0
+    const w = mount(CurrentPanel)
+    const [rate, brightness] = w.findAll('input[type="range"]')
+    expect((rate?.element as HTMLInputElement).value).toBe('0.4')
+    await rate?.setValue('0.9')
+    await brightness?.setValue('0.2')
+    expect(w.findAll('.ends').map((e) => e.text())).toEqual(['slowfast', 'darkbright'])
+    await w.get('[aria-label="Reset rate to preset"]').trigger('click')
+    await w.get('[aria-label="Reset brightness to preset"]').trigger('click')
+    expect(sent).toEqual([
+      { type: 'R', rate: 900 },
+      { type: 'B', brightness: 200 },
+      { type: 'R', rate: 400 },
+      { type: 'B', brightness: 600 },
+    ])
+    expect((rate?.element as HTMLInputElement).value).toBe('0.4')
+  })
+
+  it('follows a preset load', async () => {
+    const w = mount(CurrentPanel)
+    useLiveStore().show({ ...styleDefaults(), rate: 0.1, brightness: 0.2 }, null)
+    await flushPromises()
+    expect(w.findAll('input').map((i) => (i.element as HTMLInputElement).value)).toEqual(['0.1', '0.2'])
   })
 })
 
@@ -280,6 +313,48 @@ describe('shortcuts', () => {
     useDialogStore().answer(null)
     press('b', {}, w.get('input[type="range"]').element) // sliders don't take text
     expect(useGlobalStore().blackout).toBe(true)
+  })
+
+  it('arrows nudge the live values: ↑/↓ brightness, ←/→ rate, Shift for fine steps', () => {
+    mount(Host, { attachTo: document.body })
+    const live = useLiveStore()
+    live.setRate(0.5)
+    live.setBrightness(0.5)
+    sent.length = 0
+    press('ArrowUp')
+    press('ArrowRight', { repeat: true }) // holding repeats
+    press('ArrowDown', { shiftKey: true })
+    press('ArrowLeft', { shiftKey: true })
+    expect(live.current).toMatchObject({ rate: 0.54, brightness: 0.54 })
+    expect(sent).toEqual([
+      { type: 'B', brightness: 550 },
+      { type: 'R', rate: 550 },
+      { type: 'B', brightness: 540 },
+      { type: 'R', rate: 540 },
+    ])
+  })
+
+  it('arrows leave text fields alone, and are off while the editor is open', async () => {
+    const w = mount(Host, { attachTo: document.body })
+    const live = useLiveStore()
+    const rate = live.current.rate
+    press('ArrowRight', {}, w.get('input[type="text"]').element)
+    press('ArrowRight', { altKey: true })
+    await useEditorStore().edit(usePresetsStore().presets[1]?.id ?? '')
+    sent.length = 0
+    press('ArrowRight')
+    expect(live.current.rate).toBe(rate)
+    expect(sent).toEqual([])
+  })
+
+  it('sliders refuse focus, so the arrows stay with the shortcuts', () => {
+    const w = mount(CurrentPanel, { attachTo: document.body })
+    const g = mount(GlobalBrightness, { attachTo: document.body })
+    for (const el of [...w.findAll('input[type="range"]'), g.get('input')].map((i) => i.element as HTMLInputElement)) {
+      expect(el.tabIndex).toBe(-1)
+      el.focus()
+      expect(document.activeElement).not.toBe(el)
+    }
   })
 
   it('isTyping knows text fields', () => {

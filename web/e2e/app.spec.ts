@@ -8,6 +8,8 @@ const sentLines = (page: Page) => page.evaluate(() => window.__fake.lines())
 const rows = (page: Page) => page.getByTestId('preset-row')
 const editor = (page: Page) => page.getByRole('form', { name: 'Preset editor' })
 const dialog = (page: Page) => page.getByRole('dialog')
+const current = (page: Page) => page.getByRole('region', { name: 'Current' })
+const storedPresets = (page: Page) => page.evaluate(() => localStorage.getItem('lightbox.presets.v1'))
 /** Seeded after Ominous Glow and Alarm. */
 const PHASE4_ROWS = [/Two-tone Glow/, /Vertical Pulse/, /Lighthouse/]
 
@@ -33,11 +35,18 @@ test('connects and puts the first preset on the board', async ({ page }) => {
 
 test('the layout follows the sketch', async ({ page }) => {
   await connect(page)
+  await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Presets', 'Current', 'Brightness'])
+  const box = async (name: string) => page.getByRole('region', { name, exact: true }).boundingBox()
+  const x = async (name: string) => (await box(name))?.x ?? -1
+  expect(await x('Presets')).toBeLessThan(await x('Current'))
+  expect(await x('Current')).toBeLessThan(await x('Brightness'))
+  const currentBox = await box('Current')
+  // The editor opens in Current's place and Current comes back when it closes.
+  await page.getByRole('button', { name: 'Edit Alarm' }).click()
   await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Presets', 'Edit/Create', 'Brightness'])
-  const x = async (name: string) => (await page.getByRole('heading', { name }).boundingBox())?.x ?? -1
-  expect(await x('Presets')).toBeLessThan(await x('Edit/Create'))
-  expect(await x('Edit/Create')).toBeLessThan(await x('Brightness'))
-  await expect(page.getByText('✎ a preset or + to create one')).toBeVisible()
+  expect((await box('Edit/Create'))?.x).toBe(currentBox?.x)
+  await editor(page).getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Presets', 'Current', 'Brightness'])
   const slider = await page.getByRole('slider', { name: 'Global brightness' }).boundingBox()
   expect(slider && slider.height > slider.width * 3).toBe(true)
 })
@@ -272,4 +281,81 @@ test('a slider drag coalesces: only the latest value is sent', async ({ page }) 
   expect(sent.every((l) => l.startsWith('R '))).toBe(true)
   expect(sent.length).toBeLessThan(8)
   expect(sent.at(-1)?.startsWith('R 1000*')).toBe(true)
+})
+
+test('Current: live rate/brightness change the board, not the preset; ↻ and selecting reset them', async ({ page }) => {
+  await connect(page)
+  const before = await storedPresets(page)
+  await current(page).getByLabel('Rate', { exact: true }).fill('0.9')
+  await current(page).getByLabel('Brightness', { exact: true }).fill('0.2')
+  await expect.poll(() => fakeState(page)).toMatchObject({ style: 0, rate: 900, brightness: 200 })
+  expect(await storedPresets(page)).toBe(before)
+  await current(page).getByRole('button', { name: 'Reset rate to preset' }).click()
+  await expect.poll(() => fakeState(page)).toMatchObject({ rate: 500, brightness: 200 })
+  await current(page).getByRole('button', { name: 'Reset brightness to preset' }).click()
+  await expect.poll(() => fakeState(page)).toMatchObject({ rate: 500, brightness: 800 })
+
+  await current(page).getByLabel('Rate', { exact: true }).fill('0.9')
+  await rows(page).nth(1).click()
+  await expect.poll(() => fakeState(page)).toMatchObject({ style: 1, rate: 500, brightness: 800 })
+  await expect(current(page).getByLabel('Rate', { exact: true })).toHaveValue('0.5')
+
+  // After editing, ↻ returns to the saved values.
+  await page.getByRole('button', { name: 'Edit Alarm' }).click()
+  await editor(page).getByLabel('Rate').fill('0.3')
+  await editor(page).getByRole('button', { name: 'Save' }).click()
+  await current(page).getByLabel('Rate', { exact: true }).fill('1')
+  await current(page).getByRole('button', { name: 'Reset rate to preset' }).click()
+  await expect.poll(() => fakeState(page)).toMatchObject({ rate: 300 })
+  expect(await storedPresets(page)).toContain('"rate":0.3')
+})
+
+test('arrow keys nudge the live values', async ({ page }) => {
+  await connect(page)
+  await blur(page)
+  await page.keyboard.press('ArrowUp')
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('ArrowRight')
+  await expect.poll(() => fakeState(page)).toMatchObject({ rate: 600, brightness: 850 })
+  await page.keyboard.press('Shift+ArrowDown')
+  await page.keyboard.press('Shift+ArrowLeft')
+  await expect.poll(() => fakeState(page)).toMatchObject({ rate: 590, brightness: 840 })
+  await expect(current(page).getByLabel('Rate', { exact: true })).toHaveValue('0.59')
+  await expect(current(page).getByLabel('Brightness', { exact: true })).toHaveValue('0.84')
+  for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowUp')
+  await expect.poll(() => fakeState(page)).toMatchObject({ brightness: 1000 })
+})
+
+test('a clicked slider does not keep focus: arrows still nudge by 0.05', async ({ page }) => {
+  await connect(page)
+  const rate = current(page).getByLabel('Rate', { exact: true })
+  const box = await rate.boundingBox()
+  if (!box) throw new Error('no rate slider')
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2) // ≈ 0.5
+  await expect(rate).not.toBeFocused()
+  const before = Number(await rate.inputValue())
+  await page.keyboard.press('ArrowRight')
+  await expect(rate).toHaveValue(String(Math.round((before + 0.05) * 1000) / 1000))
+  await page.getByRole('slider', { name: 'Global brightness' }).click()
+  await expect(page.getByRole('slider', { name: 'Global brightness' })).not.toBeFocused()
+})
+
+test('a Current slider drag coalesces: only the latest value is sent', async ({ page }) => {
+  await connect(page)
+  await page.evaluate(() => window.__fake.setReplyDelay(150))
+  const before = (await sentLines(page)).length
+  const box = await current(page).getByLabel('Brightness', { exact: true }).boundingBox()
+  if (!box) throw new Error('no brightness slider')
+  const y = box.y + box.height / 2
+  await page.mouse.move(box.x + box.width / 2, y)
+  await page.mouse.down()
+  for (let i = 0; i <= 20; i++) await page.mouse.move(box.x + box.width / 2 - (i * box.width) / 40, y)
+  await page.mouse.move(box.x - 10, y)
+  await page.mouse.up()
+  await expect.poll(() => fakeState(page)).toMatchObject({ brightness: 0 })
+  await page.waitForTimeout(400)
+  const sent = (await sentLines(page)).slice(before)
+  expect(sent.every((l) => l.startsWith('B '))).toBe(true)
+  expect(sent.length).toBeLessThan(8)
+  expect(sent.at(-1)?.startsWith('B 0*')).toBe(true)
 })

@@ -17,7 +17,7 @@ Read all of it before starting any phase.
 | Firmware toolchain | PlatformIO. `nano` env (hardware) + `native` env (host unit tests). |
 | Web | Vue 3 + TypeScript (strict) + Vite, plain hand-written CSS, native inputs. Served locally (`vite dev` / `vite preview`) in Chrome. Dark, stage-friendly UI. |
 | Presets | localStorage; export/import as a JSON file. Create, edit, delete (confirm), duplicate, drag to reorder; defaults seeded on first run. Editor edits are previewed live and stored only on **Save** (✕ discards). |
-| UI layout | Follows the sketch `docs/UI design.png` (same content in `docs/UI design.svg`), agreed 2026-10-13. See §5 Layout. |
+| UI layout | Follows the sketch `docs/UI design.png` (same content in `docs/UI design.svg`), agreed 2026-10-13, except that the editor only appears while editing, in place of Current (Phase 5 gate). See §5 Layout. |
 | Shortcuts | `1`–`9` select preset by list position; `B` toggles blackout; arrows nudge live values (Phase 5). |
 | Disconnect | The Arduino is powered over USB, so unplugging it turns the LEDs off (accepted hardware limitation, no special handling). UI shows a banner, reconnects automatically when the port comes back, and resends the full state. |
 | LFO | Runs in firmware. Sine only. 0.05–5 Hz, depth 0–100%. Targets either rate or brightness. |
@@ -263,6 +263,11 @@ Use `?` after connecting to verify the firmware state matches the UI.
   ↻ on the preset being edited resets the draft (asking first if unsaved) and keeps the editor open. Rows also reorder with ↑/↓ while the drag handle has focus. Colour swatches use the native picker: Chrome previews while picking; Firefox on Linux applies the colour when its dialog closes (accepted at the gate).
   Import asks to discard an unsaved draft and closes the editor; Replace clears the selection if the active preset is gone. A corrupt presets document is not overwritten until the user changes something (the seed is used meanwhile).
 - Live values (Phase 5) never write back to the preset. Each has a reset button that returns it to the preset value.
+  Details settled in Phase 5 (confirm at the gate): while the editor is open, "the preset value" is the draft's, so an editor Rate/Brightness
+  edit moves both the live value and its ↻ target, while a live change leaves the draft alone. Live values survive a reconnect (the resend `P` carries them).
+  Arrow nudges auto-repeat while held, snap to the 0.001 slider grid and clamp to 0..1. A focused drag handle keeps ↑/↓ for reordering, even at the ends of the list.
+  Phase 5 gate: sliders never take focus (`tabindex=-1`, blurred on focus; click and drag still work), because a clicked slider used to grab the arrows and move in tiny native steps.
+  Arrows are off while the editor is open, since Current is hidden then.
 - The global brightness ↻ sets it to 100%.
 - Blackout (`B` key or button) sends `G 0` without changing the global slider. Toggling blackout off resends the slider value. While blackout is on, show a clearly visible indicator.
 - Shortcuts are ignored while focus is in a text input. `1`–`9` select the preset at that list position. Arrows (Phase 5): ↑/↓ change brightness ±0.05, ←/→ change rate ±0.05, and holding Shift changes them by ±0.01.
@@ -271,11 +276,11 @@ Use `?` after connecting to verify the firmware state matches the UI.
 - Style sliders show "slow…fast" and "dark…bright" labels. Algorithm params render from `styles.json` (slider, value shown as wire × scale + unit).
 
 **Layout (dark theme, big hit targets).** It follows the sketch `docs/UI design.png`. A slim top bar holds the connection pill (and the disconnect banner below it), the blackout button and indicator, and Export / Import.
-Below it, four columns from left to right:
+Below it, columns from left to right (the editor and Current share the second one):
 1. **Presets.** A full-height list. Each row has a drag handle, a 1–9 number badge, the name, ✎ (open editor) and a radio showing which preset is active. Clicking the row or its radio selects it. The active row also shows a ↻ (reload preset). The list scrolls, and a `+` (new preset) button sits at its bottom right.
-2. **Edit/Create.** The editor panel, titled with ✕ at the top right: Name (text), Style (dropdown), Colour/s (one swatch per style colour, each opens the native colour picker), Rate (slow…fast), Brightness (dark…bright), then the style's algorithm params. Footer: **Save** (primary), plus Duplicate and Delete (confirm) for existing presets. When no editor is open, the column keeps its width and shows a muted hint ("✎ a preset or + to create one") so the layout never jumps.
-3. **Current** (Phase 5) above **LFO** (Phase 6). Current: Rate (slow…fast) and Brightness (dark…bright) sliders, each with a ↻ reset at its right end. LFO: an Enable toggle at the top right, Destination (dropdown: Rate / Brightness), Rate (slow…fast, log 0.05–5 Hz) and Intensity (low…high = depth). Before their phase lands, these panels are left out (not shown disabled).
-4. **Brightness** (global). A tall vertical slider (top = 100%, bottom = off) with a ↻ (100%) below it.
+2. **Edit/Create**, only while a preset is being edited or created, in place of Current/LFO (you aren't playing live while editing; Phase 5 gate). The editor panel, titled with ✕ at the top right: Name (text), Style (dropdown), Colour/s (one swatch per style colour, each opens the native colour picker), Rate (slow…fast), Brightness (dark…bright), then the style's algorithm params. Footer: **Save** (primary), plus Duplicate and Delete (confirm) for existing presets.
+   **Current** (Phase 5) above **LFO** (Phase 6), whenever the editor is closed. Current: Rate (slow…fast) and Brightness (dark…bright) sliders, each with a ↻ reset at its right end. LFO: an Enable toggle at the top right, Destination (dropdown: Rate / Brightness), Rate (slow…fast, log 0.05–5 Hz) and Intensity (low…high = depth). Before their phase lands, these panels are left out (not shown disabled).
+3. **Brightness** (global). A tall vertical slider (top = 100%, bottom = off) with a ↻ (100%) below it.
 
 ↻ buttons are plain icon buttons that match the rest of the UI, not the sketch's dark filled squares (changed at the Phase 3 gate). Reuse one `ResetButton` component everywhere.
 

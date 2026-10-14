@@ -3,6 +3,7 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import ResetButton from './ResetButton.vue'
+import { refuseFocus } from '../composables/useShortcuts'
 import { useGlobalStore } from '../stores/global'
 
 const global = useGlobalStore()
@@ -29,6 +30,8 @@ function onInput(e: Event): void {
       aria-label="Global brightness"
       :aria-valuetext="percent"
       :value="level"
+      tabindex="-1"
+      @focus="refuseFocus"
       @input="onInput"
     >
     <ResetButton
