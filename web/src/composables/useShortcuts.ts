@@ -2,7 +2,7 @@
 // ↑/↓ nudge the live brightness and ←/→ the live rate by 0.05 (0.01 with Shift).
 // Ignored while typing in a text field, with modifier keys held, or while a dialog is open.
 // Arrows repeat while held and are off while the editor is open (Current is hidden then).
-// Sliders never keep focus (refuseFocus), so a clicked slider can't take the arrows over.
+// A focused slider keeps the arrows (it moves itself).
 import { onBeforeUnmount, onMounted } from 'vue'
 import { useDialogStore } from '../stores/dialog'
 import { useEditorStore } from '../stores/editor'
@@ -25,10 +25,7 @@ const ARROWS: Record<string, ['rate' | 'brightness', 1 | -1]> = {
   ArrowLeft: ['rate', -1],
 }
 
-/** On a slider's focus: drops it again. Clicking and dragging still work; arrow keys stay with the shortcuts. */
-export function refuseFocus(e: FocusEvent): void {
-  if (e.target instanceof HTMLElement) e.target.blur()
-}
+const isSlider = (t: EventTarget | null): boolean => t instanceof HTMLInputElement && t.type === 'range'
 
 export function useShortcuts(): void {
   const editor = useEditorStore()
@@ -41,7 +38,7 @@ export function useShortcuts(): void {
     if (dialog.request || isTyping(e.target)) return
     const arrow = ARROWS[e.key]
     if (arrow) {
-      if (editor.isOpen) return
+      if (editor.isOpen || isSlider(e.target)) return
       e.preventDefault()
       const by = arrow[1] * (e.shiftKey ? 0.01 : 0.05)
       if (arrow[0] === 'rate') live.nudgeRate(by)

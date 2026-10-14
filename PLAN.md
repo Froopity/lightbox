@@ -266,7 +266,7 @@ Use `?` after connecting to verify the firmware state matches the UI.
   Details settled in Phase 5 (confirm at the gate): while the editor is open, "the preset value" is the draft's, so an editor Rate/Brightness
   edit moves both the live value and its ↻ target, while a live change leaves the draft alone. Live values survive a reconnect (the resend `P` carries them).
   Arrow nudges auto-repeat while held, snap to the 0.001 slider grid and clamp to 0..1. A focused drag handle keeps ↑/↓ for reordering, even at the ends of the list.
-  Phase 5 gate: sliders never take focus (`tabindex=-1`, blurred on focus; click and drag still work), because a clicked slider used to grab the arrows and move in tiny native steps.
+  A focused slider keeps the arrows (native 0.001 steps); making sliders unfocusable was tried at the Phase 5 gate and broke dragging, so it was rolled back.
   Arrows are off while the editor is open, since Current is hidden then.
 - The global brightness ↻ sets it to 100%.
 - Blackout (`B` key or button) sends `G 0` without changing the global slider. Toggling blackout off resends the slider value. While blackout is on, show a clearly visible indicator.
@@ -278,7 +278,7 @@ Use `?` after connecting to verify the firmware state matches the UI.
 **Layout (dark theme, big hit targets).** It follows the sketch `docs/UI design.png`. A slim top bar holds the connection pill (and the disconnect banner below it), the blackout button and indicator, and Export / Import.
 Below it, columns from left to right (the editor and Current share the second one):
 1. **Presets.** A full-height list. Each row has a drag handle, a 1–9 number badge, the name, ✎ (open editor) and a radio showing which preset is active. Clicking the row or its radio selects it. The active row also shows a ↻ (reload preset). The list scrolls, and a `+` (new preset) button sits at its bottom right.
-2. **Edit/Create**, only while a preset is being edited or created, in place of Current/LFO (you aren't playing live while editing; Phase 5 gate). The editor panel, titled with ✕ at the top right: Name (text), Style (dropdown), Colour/s (one swatch per style colour, each opens the native colour picker), Rate (slow…fast), Brightness (dark…bright), then the style's algorithm params. Footer: **Save** (primary), plus Duplicate and Delete (confirm) for existing presets.
+2. **Edit/Create**, only while a preset is being edited or created, in place of Current and LFO, covering both (you aren't playing live while editing; Phase 5 gate). The editor panel, titled with ✕ at the top right: Name (text), Style (dropdown), Colour/s (one swatch per style colour, each opens the native colour picker), Rate (slow…fast), Brightness (dark…bright), then the style's algorithm params. Footer: **Save** (primary), plus Duplicate and Delete (confirm) for existing presets.
    **Current** (Phase 5) above **LFO** (Phase 6), whenever the editor is closed. Current: Rate (slow…fast) and Brightness (dark…bright) sliders, each with a ↻ reset at its right end. LFO: an Enable toggle at the top right, Destination (dropdown: Rate / Brightness), Rate (slow…fast, log 0.05–5 Hz) and Intensity (low…high = depth). Before their phase lands, these panels are left out (not shown disabled).
 3. **Brightness** (global). A tall vertical slider (top = 100%, bottom = off) with a ↻ (100%) below it.
 

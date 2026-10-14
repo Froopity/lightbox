@@ -326,20 +326,6 @@ test('arrow keys nudge the live values', async ({ page }) => {
   await expect.poll(() => fakeState(page)).toMatchObject({ brightness: 1000 })
 })
 
-test('a clicked slider does not keep focus: arrows still nudge by 0.05', async ({ page }) => {
-  await connect(page)
-  const rate = current(page).getByLabel('Rate', { exact: true })
-  const box = await rate.boundingBox()
-  if (!box) throw new Error('no rate slider')
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2) // ≈ 0.5
-  await expect(rate).not.toBeFocused()
-  const before = Number(await rate.inputValue())
-  await page.keyboard.press('ArrowRight')
-  await expect(rate).toHaveValue(String(Math.round((before + 0.05) * 1000) / 1000))
-  await page.getByRole('slider', { name: 'Global brightness' }).click()
-  await expect(page.getByRole('slider', { name: 'Global brightness' })).not.toBeFocused()
-})
-
 test('a Current slider drag coalesces: only the latest value is sent', async ({ page }) => {
   await connect(page)
   await page.evaluate(() => window.__fake.setReplyDelay(150))

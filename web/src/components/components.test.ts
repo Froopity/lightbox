@@ -334,27 +334,18 @@ describe('shortcuts', () => {
     ])
   })
 
-  it('arrows leave text fields alone, and are off while the editor is open', async () => {
+  it('arrows leave text fields and focused sliders alone, and are off while the editor is open', async () => {
     const w = mount(Host, { attachTo: document.body })
     const live = useLiveStore()
     const rate = live.current.rate
     press('ArrowRight', {}, w.get('input[type="text"]').element)
+    press('ArrowRight', {}, w.get('input[type="range"]').element)
     press('ArrowRight', { altKey: true })
     await useEditorStore().edit(usePresetsStore().presets[1]?.id ?? '')
     sent.length = 0
     press('ArrowRight')
     expect(live.current.rate).toBe(rate)
     expect(sent).toEqual([])
-  })
-
-  it('sliders refuse focus, so the arrows stay with the shortcuts', () => {
-    const w = mount(CurrentPanel, { attachTo: document.body })
-    const g = mount(GlobalBrightness, { attachTo: document.body })
-    for (const el of [...w.findAll('input[type="range"]'), g.get('input')].map((i) => i.element as HTMLInputElement)) {
-      expect(el.tabIndex).toBe(-1)
-      el.focus()
-      expect(document.activeElement).not.toBe(el)
-    }
   })
 
   it('isTyping knows text fields', () => {
