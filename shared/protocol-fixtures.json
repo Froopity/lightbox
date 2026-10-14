@@ -14,7 +14,13 @@
       0,
       0,
       0
-    ]
+    ],
+    "lfo": {
+      "on": 0,
+      "target": 0,
+      "mHz": 0,
+      "depth": 0
+    }
   },
   "fixtures": [
     {
@@ -46,7 +52,13 @@
           0,
           0,
           0
-        ]
+        ],
+        "lfo": {
+          "on": 0,
+          "target": 0,
+          "mHz": 0,
+          "depth": 0
+        }
       }
     },
     {
@@ -572,9 +584,198 @@
       "expectError": 2
     },
     {
-      "name": "LFO not implemented until Phase 6",
+      "name": "lfo on, targeting rate",
+      "cmd": {
+        "type": "L",
+        "on": 1,
+        "target": 0,
+        "mHz": 1000,
+        "depth": 500
+      },
       "line": "L 1 0 1000 500*79",
-      "expectError": 2
+      "expectReply": "OK",
+      "expectState": {
+        "rate": 500,
+        "lfo": {
+          "on": 1,
+          "target": 0,
+          "mHz": 1000,
+          "depth": 500
+        }
+      }
+    },
+    {
+      "name": "lfo on, targeting brightness",
+      "cmd": {
+        "type": "L",
+        "on": 1,
+        "target": 1,
+        "mHz": 250,
+        "depth": 1000
+      },
+      "line": "L 1 1 250 1000*7A",
+      "expectReply": "OK",
+      "expectState": {
+        "brightness": 800,
+        "lfo": {
+          "on": 1,
+          "target": 1,
+          "mHz": 250,
+          "depth": 1000
+        }
+      }
+    },
+    {
+      "name": "dump reports the lfo",
+      "before": [
+        "L 1 1 250 1000*7A"
+      ],
+      "line": "?*3F",
+      "expectReply": "S 0 500 800 1000 9966CC 000000 0 0 0 0 1 1 250 1000 0"
+    },
+    {
+      "name": "lfo off keeps its settings",
+      "before": [
+        "L 1 1 250 1000*7A"
+      ],
+      "cmd": {
+        "type": "L",
+        "on": 0,
+        "target": 1,
+        "mHz": 250,
+        "depth": 1000
+      },
+      "line": "L 0 1 250 1000*7B",
+      "expectReply": "OK",
+      "expectState": {
+        "lfo": {
+          "on": 0,
+          "target": 1,
+          "mHz": 250,
+          "depth": 1000
+        }
+      }
+    },
+    {
+      "name": "lfo settings change while on",
+      "before": [
+        "L 1 0 1000 500*79"
+      ],
+      "line": "L 1 1 3000 200*7D",
+      "expectReply": "OK",
+      "expectState": {
+        "lfo": {
+          "on": 1,
+          "target": 1,
+          "mHz": 3000,
+          "depth": 200
+        }
+      }
+    },
+    {
+      "name": "preset turns the lfo off and keeps its settings",
+      "before": [
+        "L 1 0 1000 500*79"
+      ],
+      "line": "P 1 250 900 00FF00 000000 6 0 0 0*49",
+      "expectReply": "OK",
+      "expectState": {
+        "style": 1,
+        "lfo": {
+          "on": 0,
+          "target": 0,
+          "mHz": 1000,
+          "depth": 500
+        }
+      }
+    },
+    {
+      "name": "other commands leave the lfo on",
+      "before": [
+        "L 1 0 1000 500*79",
+        "R 900*4B",
+        "B 100*53",
+        "G 300*54"
+      ],
+      "line": "C 0 112233*73",
+      "expectReply": "OK",
+      "expectState": {
+        "lfo": {
+          "on": 1,
+          "target": 0,
+          "mHz": 1000,
+          "depth": 500
+        }
+      }
+    },
+    {
+      "name": "lfo slowest rate, no depth",
+      "line": "L 1 0 50 0*78",
+      "expectReply": "OK",
+      "expectState": {
+        "lfo": {
+          "on": 1,
+          "target": 0,
+          "mHz": 50,
+          "depth": 0
+        }
+      }
+    },
+    {
+      "name": "lfo fastest rate",
+      "line": "L 0 1 5000 1000*49",
+      "expectReply": "OK",
+      "expectState": {
+        "lfo": {
+          "on": 0,
+          "target": 1,
+          "mHz": 5000,
+          "depth": 1000
+        }
+      }
+    },
+    {
+      "name": "lfo rate below 50 mHz",
+      "line": "L 1 0 49 500*75",
+      "expectError": 3
+    },
+    {
+      "name": "lfo rate above 5000 mHz",
+      "line": "L 1 0 5001 500*7C",
+      "expectError": 3
+    },
+    {
+      "name": "lfo depth out of range",
+      "line": "L 1 0 1000 1001*4C",
+      "expectError": 3
+    },
+    {
+      "name": "lfo on flag out of range",
+      "line": "L 2 0 1000 500*7A",
+      "expectError": 3
+    },
+    {
+      "name": "lfo target out of range",
+      "line": "L 1 2 1000 500*7B",
+      "expectError": 3
+    },
+    {
+      "name": "lfo with too few args",
+      "line": "L 1 0 1000*6C",
+      "expectError": 3
+    },
+    {
+      "name": "lfo with an extra arg",
+      "line": "L 1 0 1000 500 1*68",
+      "expectError": 3
+    },
+    {
+      "name": "bad lfo line leaves a running lfo alone",
+      "before": [
+        "L 1 1 250 1000*7A"
+      ],
+      "line": "L 0 0 0 0*4C",
+      "expectError": 3
     },
     {
       "name": "line too long (73 bytes)",

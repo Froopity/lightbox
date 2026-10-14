@@ -6,6 +6,7 @@ import BlackoutButton from './components/BlackoutButton.vue'
 import ConnectionPill from './components/ConnectionPill.vue'
 import CurrentPanel from './components/CurrentPanel.vue'
 import GlobalBrightness from './components/GlobalBrightness.vue'
+import LfoPanel from './components/LfoPanel.vue'
 import PresetEditor from './components/PresetEditor.vue'
 import PresetList from './components/PresetList.vue'
 import PresetTransfer from './components/PresetTransfer.vue'
@@ -60,7 +61,7 @@ onMounted(() => {
           <PresetList />
         </div>
       </section>
-      <!-- While editing, the editor takes the place of Current: you aren't playing live then. -->
+      <!-- While editing, the editor takes the place of Current and LFO: you aren't playing live then. -->
       <section
         v-if="editorOpen"
         class="column"
@@ -73,18 +74,25 @@ onMounted(() => {
           <PresetEditor />
         </div>
       </section>
-      <section
+      <div
         v-else
-        class="column"
-        aria-labelledby="h-current"
+        class="column live-column"
       >
-        <h2 id="h-current">
-          Current
-        </h2>
-        <div class="panel live">
-          <CurrentPanel />
-        </div>
-      </section>
+        <section aria-labelledby="h-current">
+          <h2 id="h-current">
+            Current
+          </h2>
+          <div class="panel live">
+            <CurrentPanel />
+          </div>
+        </section>
+        <section
+          class="panel lfo"
+          aria-labelledby="h-lfo"
+        >
+          <LfoPanel />
+        </section>
+      </div>
       <section
         class="column brightness"
         aria-labelledby="h-brightness"
@@ -168,10 +176,19 @@ h2 {
   background: var(--panel);
 }
 
-.panel.live {
-  /* Sized to its sliders; the LFO panel goes below it (Phase 6). */
+.panel.live,
+.panel.lfo {
+  /* Sized to their controls, stacked: Current above LFO. */
   flex: none;
   padding: 1.25rem;
+}
+
+.panel.lfo {
+  margin-top: 1rem;
+}
+
+.live-column {
+  overflow-y: auto;
 }
 
 .panel.editor {

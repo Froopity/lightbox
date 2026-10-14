@@ -261,7 +261,7 @@ describe('unsaved changes', () => {
 })
 
 describe('live store', () => {
-  it('resends the board state: P from the live values, then G', async () => {
+  it('resends the board state: P from the live values, then G (no L while the LFO is off)', async () => {
     const { editor, live, alarm } = setup()
     await editor.select(alarm.id)
     live.setBrightness(0.3)

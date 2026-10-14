@@ -8,6 +8,7 @@ import { clonePreset, presetCommand, styleDefaults, toWire, type PresetData } fr
 import { styleByKey } from '../styles/registry'
 import { useConnectionStore } from './connection'
 import { useGlobalStore } from './global'
+import { useLfoStore } from './lfo'
 
 export const useLiveStore = defineStore('live', () => {
   /** The selected preset, or null (nothing selected, or a new preset being drafted). Not persisted. */
@@ -19,11 +20,12 @@ export const useLiveStore = defineStore('live', () => {
 
   const send = (cmd: Command): void => useConnectionStore().send(cmd)
 
-  /** Loads settings onto the board (`P`): resets the effect and the live values. */
+  /** Loads settings onto the board (`P`): resets the effect and the live values, and turns the LFO off. */
   function show(p: PresetData, id: string | null): void {
     current.value = clonePreset(p)
     preset.value = { rate: p.rate, brightness: p.brightness }
     activeId.value = id
+    useLfoStore().stopped()
     send(presetCommand(current.value))
   }
 
@@ -68,9 +70,9 @@ export const useLiveStore = defineStore('live', () => {
     send({ type: 'A', idx, value })
   }
 
-  /** Restores a freshly reset board: P, then G (then L once the LFO exists). */
+  /** Restores a freshly reset board: P, then G, then L if the LFO is on. */
   function resyncCommands(): Command[] {
-    return [presetCommand(current.value), useGlobalStore().command()]
+    return [presetCommand(current.value), useGlobalStore().command(), ...useLfoStore().resyncCommands()]
   }
 
   return {

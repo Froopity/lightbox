@@ -106,6 +106,7 @@ Each frame, compute `dt_us` from `micros()`. Phase accumulators are `uint32_t`, 
 Implementation: the increment is held in Q8 (`2^40 / period_us`, rounded) with 8 fractional phase bits, so long periods stay exact to ~10 ppm.
 Measured on hardware (Phase 1): Ominous ≈ 400 fps, Alarm ≈ 300 fps; `micros()` tracks host time to 0.04% despite `show()` disabling interrupts.
 Phase 4, at full rate (`make smoke` reports these): Two-tone ≈ 246 fps, Pulse ≈ 322 fps, Lighthouse ≈ 265 fps.
+Phase 6, with a 5 Hz full-depth LFO sweeping the rate: Ominous ≈ 399, Alarm ≈ 264, Two-tone ≈ 238, Pulse ≈ 305, Lighthouse ≈ 255 fps.
 Because rate changes alter the increment and never the phase, rate edits and LFO modulation never cause visual jumps.
 Target ≥ 100 fps. Report the measured fps in the `?` dump.
 
@@ -216,7 +217,7 @@ B <b>                              live brightness
 G <g>                              global brightness
 C <slot> <rrggbb>                  one colour
 A <idx> <value>                    one algorithm param (wire units, clamped to styles.json range)
-L <on 0|1> <target 0=rate|1=bright> <mHz> <depth>   LFO (Phase 6)
+L <on 0|1> <target 0=rate|1=bright> <mHz 50–5000> <depth 0–1000>   LFO (Phase 6)
 ?                                  dump → "S <style> <r> <b> <g> <c0> <c1> <a0..a3> <lfoOn> <lfoT> <mHz> <depth> <fps>"
 ```
 Unused colour/param slots are sent as `000000` / `0`. Error codes: 1 checksum, 2 unknown command, 3 bad arguments, 4 line too long.
@@ -226,7 +227,10 @@ Unused colour/param slots are sent as `000000` / `0`. Error codes: 1 checksum, 2
 - Arguments are separated by exactly one space, with no trailing space. Integers are one or more decimal digits (leading zeros allowed) and at most 65535. Colours are exactly 6 hex digits in either case.
 - `r`, `b`, `g` above 1000, a style id ≥ the style count, or a colour slot > 1 is `ERR 3` (rejected, not clamped). Param values are clamped to the style's range.
 - `P` ignores params the style doesn't have. `A` with an index the style doesn't have is `ERR 3`.
-- An error never changes state. Replies carry no checksum. `L` is `ERR 2` and the `?` LFO fields are `0 0 0 0` until Phase 6.
+- An error never changes state. Replies carry no checksum.
+- `L` (Phase 6): every field is range-checked, out of range is `ERR 3` (not clamped), whether `on` is 0 or 1. `L` always stores its settings, so the `?` LFO fields
+  report the last `L` sent (`0 0 0 0` at boot). `P` sets `lfoOn` to 0 and keeps the other three. `L 1 …` while already on keeps the LFO's phase (only
+  off → on resets it), so the host can resend settings during a drag.
 - Opening the port resets the Nano (DTR), and a replug power-cycles it anyway, so after a reconnect the board shows the boot default for ~2 s until the host has resent the full state.
 
 **Fixtures** (`shared/protocol-fixtures.json`): `boot` holds the boot state. Each case starts from it, applies `before` (each line must reply `OK`), then sends `line`. `cmd`, when present, must encode to exactly `line`. Each case has either `expectReply` or `expectError` (then the reply is `ERR <n>` and the state must be unchanged), and optionally a partial `expectState`. fps is 0 in tests.
@@ -248,7 +252,9 @@ Use `?` after connecting to verify the firmware state matches the UI.
   Seed one default preset per available style when the key is absent. Validate on load; reject or repair malformed entries without crashing.
 - `live`: active preset id, live rate, live brightness. Not persisted.
 - `global`: global brightness (persisted, `lightbox.global.v1`), blackout flag (never persisted).
-- `lfo` (Phase 6): on, target, rate, depth. LFO settings persist; the on/off state does not.
+- `lfo` (Phase 6): on, target, rate, depth. LFO settings persist (`lightbox.lfo.v1` = `{ target, hz, depth }`, repaired on load); the on/off state does not.
+  Defaults: Brightness, 1 Hz, 50%. Enabling or disabling sends `L`; setting changes are sent only while it's on (`L` carries them all when it's next enabled).
+  Every `P` (select, ↻, editor open/✕, style change) switches the toggle off without sending `L`, since `P` does it on the board.
 
 **Rules:**
 - Selecting a preset, or opening its editor, makes it active: send `P`, set live rate/brightness to the preset values, and turn the LFO off.
@@ -289,12 +295,17 @@ Playwright e2e uses an injected fake `navigator.serial` that speaks the protocol
 Tests assert on that recorded state. They cover disconnect/reconnect and verify that coalescing sends only the last value of a drag.
 
 ## 6. LFO (firmware, Phase 6)
-Sine LFO with its own phase accumulator. φ_L resets to 0 when the LFO is turned on.
+Sine LFO with its own phase accumulator. φ_L resets to 0 when the LFO is turned on (sin 0 = 0, so turning it on never jumps).
 For the target value v ∈ [0,1] (live rate or live brightness, normalised) and depth δ ∈ [0,1]:
 `v' = clamp(v + (δ/2) · sin 2πφ_L, 0, 1)`. Depth 100% swings over the full range peak-to-peak.
 v' feeds the normal mapping in §2.2. Rate modulation changes the phase increment only, so the effect never jumps.
 The LFO keeps running if the browser closes (the board stays powered over USB). `P` turns it off.
 The UI rate slider is log-scaled, 0.05–5 Hz.
+Implementation (Phase 6, `lib/core/lfo.h`): `sinSmooth` once per frame (exact at ±1, so 100% reaches both ends). A rate target re-evaluates the
+rate table each frame; a brightness target only changes the `setBrightness` byte. Turning it off returns to the unmodulated values at once.
+The live values (`R`/`B`, the Current sliders, the `?` dump) are never modulated: the LFO works on a copy each frame.
+Details settled in Phase 6 (confirm at the gate): the LFO Rate and Intensity sliders show a readout (Hz, %) as well as slow…fast / low…high;
+the Enable toggle is a switch-styled native checkbox. No keyboard shortcut for the LFO.
 
 ## 7. Phases
 

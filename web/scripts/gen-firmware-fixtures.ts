@@ -14,7 +14,7 @@ const HEADER = resolve(ROOT, 'firmware/test/test_protocol/fixtures_gen.h')
 
 export const MAX_BEFORE = 4
 /** Order of the expected-state slots; -1 means "not checked". */
-const STATE_SLOTS = 4 + MAX_COLORS + MAX_PARAMS
+const STATE_SLOTS = 4 + MAX_COLORS + MAX_PARAMS + 4
 
 const cstr = (s: string): string => JSON.stringify(s) // ASCII only: JSON escapes are valid C escapes
 
@@ -27,6 +27,10 @@ function stateSlots(s: Partial<DeviceState> | undefined): (number | string)[] {
     s?.global ?? -1,
     ...Array.from({ length: MAX_COLORS }, (_, i) => color(s?.colors?.[i])),
     ...Array.from({ length: MAX_PARAMS }, (_, i) => s?.params?.[i] ?? -1),
+    s?.lfo?.on ?? -1,
+    s?.lfo?.target ?? -1,
+    s?.lfo?.mHz ?? -1,
+    s?.lfo?.depth ?? -1,
   ]
 }
 
@@ -52,7 +56,7 @@ export function render(boot: DeviceState, fixtures: Fixture[]): string {
     '#include <stdint.h>',
     '',
     `constexpr uint8_t MAX_BEFORE = ${MAX_BEFORE};`,
-    `constexpr uint8_t STATE_SLOTS = ${STATE_SLOTS};  // style, rate, brightness, global, colours, params`,
+    `constexpr uint8_t STATE_SLOTS = ${STATE_SLOTS};  // style, rate, brightness, global, colours, params, LFO on/target/mHz/depth`,
     '',
     'struct Fixture {',
     '  const char* name;',

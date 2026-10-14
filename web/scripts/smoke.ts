@@ -2,7 +2,7 @@
 // Uses the app's own Link (wake/CTS, retries) and predicts every `?` dump with the DeviceModel.
 import { Duplex } from 'node:stream'
 import { SerialPort } from 'serialport'
-import { encode, type Command } from '../src/protocol/commands'
+import { encode, LFO_MHZ_MAX, LFO_MHZ_MIN, type Command } from '../src/protocol/commands'
 import { bootState, DeviceModel, dumpLine } from '../src/protocol/device'
 import { Link } from '../src/serial/link'
 import { STYLES } from '../src/styles/registry'
@@ -51,7 +51,7 @@ const color = (): string => `#${int(0xffffff).toString(16).padStart(6, '0')}`
 
 function randomCommand(style: number): Command {
   const params = STYLES[style]?.params ?? []
-  switch (int(params.length > 0 ? 5 : 4)) {
+  switch (int(params.length > 0 ? 6 : 5)) {
     case 0: {
       const s = int(STYLES.length - 1)
       const ps = STYLES[s]?.params ?? []
@@ -61,6 +61,7 @@ function randomCommand(style: number): Command {
     case 2: return { type: 'B', brightness: int(1000) }
     case 3: return { type: 'G', global: int(1000) }
     case 4: return { type: 'C', slot: int(1), color: color() }
+    case 5: return { type: 'L', on: int(1) ? 1 : 0, target: int(1) ? 1 : 0, mHz: LFO_MHZ_MIN + int(LFO_MHZ_MAX - LFO_MHZ_MIN), depth: int(1000) }
     default: {
       const idx = int(params.length - 1)
       return { type: 'A', idx, value: int(params[idx]?.wireMax ?? 0) }
@@ -93,9 +94,11 @@ async function main(): Promise<void> {
   check(bad === 'ERR 1', `bad checksum replied "${bad}"`)
   console.log('smoke: bad checksum → ERR 1')
 
-  // Every style at full rate and its defaults. Idle for two seconds first so the fps sample isn't
+  // Every style at full rate and its defaults, then with the fastest full-depth LFO sweeping its rate
+  // (the LFO's per-frame cost on top of the effect's). Idle for two seconds first so the fps sample isn't
   // dragged down by command traffic.
   const rates: string[] = []
+  const lfoRates: string[] = []
   for (const s of STYLES) {
     const params = s.params.map((p) => p.default)
     await link.exchange(encode({ type: 'P', style: s.id, rate: 1000, brightness: 1000, colors: s.defaultColors, params }))
@@ -103,8 +106,23 @@ async function main(): Promise<void> {
     d = await dump(link)
     check(d.fps >= MIN_FPS, `${s.name} at full rate runs ${d.fps} fps, below ${MIN_FPS}`)
     rates.push(`${s.name} ${d.fps}`)
+
+    await link.exchange(encode({ type: 'R', rate: 500 }))
+    await link.exchange(encode({ type: 'L', on: 1, target: 0, mHz: LFO_MHZ_MAX, depth: 1000 }))
+    await sleep(2100)
+    d = await dump(link)
+    check(d.state.endsWith(` 1 0 ${LFO_MHZ_MAX} 1000`), `${s.name}: LFO not on in "${d.state}"`)
+    check(d.fps >= MIN_FPS, `${s.name} with the LFO on its rate runs ${d.fps} fps, below ${MIN_FPS}`)
+    lfoRates.push(`${s.name} ${d.fps}`)
   }
   console.log(`smoke: fps at full rate: ${rates.join(', ')}`)
+  console.log(`smoke: fps with a 5 Hz full-depth LFO on rate: ${lfoRates.join(', ')}`)
+
+  // A preset load turns the LFO off.
+  await link.exchange(encode({ type: 'P', style: 0, rate: 500, brightness: 800, colors: ['#9966CC'], params: [] }))
+  d = await dump(link)
+  check(d.state.endsWith(` 0 0 ${LFO_MHZ_MAX} 1000`), `P left the LFO on: "${d.state}"`)
+  console.log('smoke: P turns the LFO off')
 
   await disconnect(conn)
   const again = await connect()

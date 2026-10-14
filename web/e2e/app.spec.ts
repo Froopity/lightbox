@@ -9,6 +9,7 @@ const rows = (page: Page) => page.getByTestId('preset-row')
 const editor = (page: Page) => page.getByRole('form', { name: 'Preset editor' })
 const dialog = (page: Page) => page.getByRole('dialog')
 const current = (page: Page) => page.getByRole('region', { name: 'Current' })
+const lfo = (page: Page) => page.getByRole('region', { name: 'LFO' })
 const storedPresets = (page: Page) => page.evaluate(() => localStorage.getItem('lightbox.presets.v1'))
 /** Seeded after Ominous Glow and Alarm. */
 const PHASE4_ROWS = [/Two-tone Glow/, /Vertical Pulse/, /Lighthouse/]
@@ -45,8 +46,14 @@ test('the layout follows the sketch', async ({ page }) => {
   await page.getByRole('button', { name: 'Edit Alarm' }).click()
   await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Presets', 'Edit/Create', 'Brightness'])
   expect((await box('Edit/Create'))?.x).toBe(currentBox?.x)
+  await expect(lfo(page)).toHaveCount(0) // the editor covers the LFO too
   await editor(page).getByRole('button', { name: 'Save' }).click()
   await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Presets', 'Current', 'Brightness'])
+  // LFO sits below Current, in the same column.
+  const lfoBox = await lfo(page).boundingBox()
+  const currentNow = await box('Current')
+  expect(lfoBox && currentNow && lfoBox.y >= currentNow.y + currentNow.height).toBe(true)
+  expect(lfoBox && currentNow && Math.abs(lfoBox.x - currentNow.x) < 1).toBe(true)
   const slider = await page.getByRole('slider', { name: 'Global brightness' }).boundingBox()
   expect(slider && slider.height > slider.width * 3).toBe(true)
 })
@@ -344,4 +351,59 @@ test('a Current slider drag coalesces: only the latest value is sent', async ({ 
   expect(sent.every((l) => l.startsWith('B '))).toBe(true)
   expect(sent.length).toBeLessThan(8)
   expect(sent.at(-1)?.startsWith('B 0*')).toBe(true)
+})
+
+test('LFO: enable, change settings live, and a preset load turns it off', async ({ page }) => {
+  await connect(page)
+  const enable = lfo(page).getByRole('switch', { name: 'Enable' })
+  await expect(enable).not.toBeChecked()
+  await enable.check()
+  await expect.poll(() => fakeState(page)).toMatchObject({ lfo: { on: 1, target: 1, mHz: 1000, depth: 500 } })
+  await lfo(page).getByLabel('Destination').selectOption('Rate')
+  await lfo(page).getByLabel('Rate', { exact: true }).fill('0')
+  await lfo(page).getByLabel('Intensity').fill('1')
+  await expect.poll(() => fakeState(page)).toMatchObject({ lfo: { on: 1, target: 0, mHz: 50, depth: 1000 } })
+  await expect(lfo(page).getByText('0.05 Hz')).toBeVisible()
+  // The live values themselves don't move: the board does the modulation.
+  expect(await fakeState(page)).toMatchObject({ rate: 500, brightness: 800 })
+
+  await rows(page).nth(1).click()
+  await expect.poll(() => fakeState(page)).toMatchObject({ style: 1, lfo: { on: 0, target: 0, mHz: 50, depth: 1000 } })
+  await expect(enable).not.toBeChecked()
+  expect((await sentLines(page)).at(-1)?.[0]).toBe('P') // P alone turns it off
+
+  // Changes while off are kept but not sent; enabling sends them.
+  await lfo(page).getByLabel('Intensity').fill('0.3')
+  await page.waitForTimeout(200)
+  expect(await fakeState(page)).toMatchObject({ lfo: { on: 0, depth: 1000 } })
+  await enable.check()
+  await expect.poll(() => fakeState(page)).toMatchObject({ lfo: { on: 1, target: 0, mHz: 50, depth: 300 } })
+  await enable.uncheck()
+  await expect.poll(() => fakeState(page)).toMatchObject({ lfo: { on: 0 } })
+})
+
+test('LFO settings persist; on/off does not', async ({ page }) => {
+  await connect(page)
+  await lfo(page).getByLabel('Destination').selectOption('Rate')
+  await lfo(page).getByLabel('Intensity').fill('0.8')
+  await lfo(page).getByRole('switch', { name: 'Enable' }).check()
+  await page.reload()
+  await expect(status(page)).toHaveText('Connected', { timeout: 10_000 })
+  await expect(lfo(page).getByRole('switch', { name: 'Enable' })).not.toBeChecked()
+  await expect(lfo(page).getByLabel('Destination')).toHaveValue('rate')
+  await expect(lfo(page).getByLabel('Intensity')).toHaveValue('0.8')
+  expect(await fakeState(page)).toMatchObject({ lfo: { on: 0 } })
+})
+
+test('a running LFO survives a replug: P, G, then L are resent', async ({ page }) => {
+  await connect(page)
+  await lfo(page).getByRole('switch', { name: 'Enable' }).check()
+  await expect.poll(() => fakeState(page)).toMatchObject({ lfo: { on: 1 } })
+  await page.evaluate(() => window.__fake.unplug())
+  await expect(status(page)).toHaveText('Reconnecting…')
+  await page.evaluate(() => window.__fake.replug())
+  await expect(status(page)).toHaveText('Connected', { timeout: 10_000 })
+  expect((await sentLines(page)).slice(-4).map((l) => l[0])).toEqual(['P', 'G', 'L', '?'])
+  expect(await fakeState(page)).toMatchObject({ lfo: { on: 1, target: 1, mHz: 1000, depth: 500 } })
+  await expect(page.getByRole('alert')).toHaveCount(0) // no banner, and the `?` check matched
 })

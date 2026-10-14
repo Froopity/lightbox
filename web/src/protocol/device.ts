@@ -4,7 +4,7 @@
 import { STYLES } from '../styles/registry'
 import { DEFAULT_BRIGHTNESS, DEFAULT_GLOBAL, DEFAULT_RATE, MAX_COLORS, MAX_PARAMS, WIRE_MAX } from '../styles/types'
 import { checksum } from './checksum'
-import { ErrorCode, MAX_LINE, PROTOCOL_VERSION } from './commands'
+import { ErrorCode, LFO_MHZ_MAX, LFO_MHZ_MIN, MAX_LINE, PROTOCOL_VERSION, type LfoTarget } from './commands'
 
 export interface DeviceState {
   style: number
@@ -15,6 +15,15 @@ export interface DeviceState {
   colors: string[]
   /** Wire units, always MAX_PARAMS entries. */
   params: number[]
+  /** Kept while off; `P` turns it off. All zero at boot. */
+  lfo: LfoState
+}
+
+export interface LfoState {
+  on: 0 | 1
+  target: LfoTarget
+  mHz: number
+  depth: number
 }
 
 function styleDefaults(style: number): Pick<DeviceState, 'colors' | 'params'> {
@@ -26,13 +35,21 @@ function styleDefaults(style: number): Pick<DeviceState, 'colors' | 'params'> {
 }
 
 export function bootState(): DeviceState {
-  return { style: 0, rate: DEFAULT_RATE, brightness: DEFAULT_BRIGHTNESS, global: DEFAULT_GLOBAL, ...styleDefaults(0) }
+  return {
+    style: 0,
+    rate: DEFAULT_RATE,
+    brightness: DEFAULT_BRIGHTNESS,
+    global: DEFAULT_GLOBAL,
+    ...styleDefaults(0),
+    lfo: { on: 0, target: 0, mHz: 0, depth: 0 },
+  }
 }
 
-/** The `?` reply for a state (PLAN.md §4). LFO fields are placeholders until Phase 6. */
+/** The `?` reply for a state (PLAN.md §4). */
 export function dumpLine(s: DeviceState, fps = 0): string {
   const colors = s.colors.map((c) => c.slice(1))
-  return ['S', s.style, s.rate, s.brightness, s.global, ...colors, ...s.params, 0, 0, 0, 0, fps].join(' ')
+  const { on, target, mHz, depth } = s.lfo
+  return ['S', s.style, s.rate, s.brightness, s.global, ...colors, ...s.params, on, target, mHz, depth, fps].join(' ')
 }
 
 class ArgError extends Error {}
@@ -120,7 +137,7 @@ export class DeviceModel {
         const params = Array.from({ length: MAX_PARAMS }, () => a.num())
         a.done()
         const defaults = styleDefaults(style)
-        this.state = { ...s, style, rate, brightness, colors, params: defaults.params }
+        this.state = { ...s, style, rate, brightness, colors, params: defaults.params, lfo: { ...s.lfo, on: 0 } }
         params.forEach((v, i) => this.setParam(i, v))
         break
       }
@@ -146,6 +163,16 @@ export class DeviceModel {
         a.done()
         if (idx >= (STYLES[s.style]?.params.length ?? 0)) throw new ArgError()
         this.setParam(idx, value)
+        break
+      }
+      case 'L': {
+        const on = a.num(1) as 0 | 1
+        const target = a.num(1) as LfoTarget
+        const mHz = a.num(LFO_MHZ_MAX)
+        const depth = a.num(WIRE_MAX)
+        a.done()
+        if (mHz < LFO_MHZ_MIN) throw new ArgError()
+        s.lfo = { on, target, mHz, depth }
         break
       }
       default:

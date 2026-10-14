@@ -1,9 +1,10 @@
-// Effect state: active style, live controls, colours, params, and the main phase.
+// Effect state: active style, live controls, colours, params, the main phase, and the LFO.
 // main.cpp drives it each frame (tick → render); protocol.h drives the setters.
 #pragma once
 #include <stdint.h>
 
 #include "frame.h"
+#include "lfo.h"
 #include "style.h"
 #include "timing.h"
 #include "effects/twotone.h"
@@ -24,6 +25,8 @@ class Engine {
   void setColor(uint8_t slot, uint32_t rgb);
   // Value in wire units, clamped to the style's range.
   void setParam(uint8_t idx, uint16_t value);
+  void setLfo(bool on, uint8_t target, uint16_t mHz, uint16_t depth);
+  void lfoOff();
 
   void tick(uint32_t dtUs);
   void render(Frame& f) const;
@@ -40,6 +43,7 @@ class Engine {
   uint32_t phase() const { return phase_.value; }
   PhaseInc inc() const { return inc_; }
   const twotone::State& twotone() const { return twotone_; }
+  const Lfo& lfo() const { return lfo_; }
 
  private:
   StyleDef def_;
@@ -47,11 +51,15 @@ class Engine {
   Phase phase_;
   // Two-tone is the only effect with state; the others are pure functions of the main phase.
   twotone::State twotone_;
+  Lfo lfo_;
   PhaseInc inc_ = 0;
   uint32_t colors_[MAX_COLORS] = {};
   uint16_t params_[MAX_PARAMS] = {};
   uint16_t rate_ = 0, brightness_ = 0, global_ = 0;
   uint8_t style_ = 0;
+
+  // The increment for the live rate, or for the LFO-modulated one.
+  void updateInc() { inc_ = rates_.inc(lfo_.modulates(Lfo::RATE) ? lfo_.apply(rate_) : rate_); }
 };
 
 }  // namespace core

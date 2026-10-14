@@ -30,7 +30,8 @@ static const char* send(Engine& e, const char* line, uint16_t fps = 0) {
 
 static void stateOf(const Engine& e, int32_t out[STATE_SLOTS]) {
   int32_t s[STATE_SLOTS] = {e.style(), e.rate(), e.brightness(), e.global(), (int32_t)e.color(0), (int32_t)e.color(1),
-                            e.param(0), e.param(1), e.param(2), e.param(3)};
+                            e.param(0), e.param(1), e.param(2), e.param(3),
+                            e.lfo().on(), e.lfo().target(), e.lfo().mHz(), e.lfo().depth()};
   memcpy(out, s, sizeof s);
 }
 

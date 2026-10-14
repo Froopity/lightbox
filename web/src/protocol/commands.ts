@@ -16,6 +16,13 @@ export type Command =
   | { type: 'G'; global: number }
   | { type: 'C'; slot: number; color: string }
   | { type: 'A'; idx: number; value: number }
+  | { type: 'L'; on: 0 | 1; target: LfoTarget; mHz: number; depth: number }
+
+/** What the LFO moves, as on the wire: 0 = rate, 1 = brightness. */
+export type LfoTarget = 0 | 1
+/** LFO rate range on the wire, in millihertz (PLAN.md §2.2). */
+export const LFO_MHZ_MIN = 50
+export const LFO_MHZ_MAX = 5000
 
 export const ErrorCode = { checksum: 1, unknownCommand: 2, badArguments: 3, lineTooLong: 4 } as const
 
@@ -51,6 +58,8 @@ function payload(cmd: Command): string {
       return `C ${int(cmd.slot)} ${wireColor(cmd.color)}`
     case 'A':
       return `A ${int(cmd.idx)} ${int(cmd.value)}`
+    case 'L':
+      return `L ${int(cmd.on)} ${int(cmd.target)} ${int(cmd.mHz)} ${int(cmd.depth)}`
   }
 }
 

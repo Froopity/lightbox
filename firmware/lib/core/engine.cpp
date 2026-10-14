@@ -11,6 +11,7 @@ void Engine::reset() {
   rate_ = 500;
   brightness_ = 800;
   global_ = WIRE_MAX;
+  lfo_ = Lfo();
   loadStyle(STYLE_OMINOUS);
 }
 
@@ -20,12 +21,14 @@ void Engine::loadStyle(uint8_t style) {
   for (uint8_t i = 0; i < MAX_COLORS; i++) colors_[i] = def_.defaultColors[i];
   for (uint8_t i = 0; i < MAX_PARAMS; i++) params_[i] = def_.params[i].def;
   rates_.build(def_.periodSlowMs, def_.periodFastMs);
-  inc_ = rates_.inc(rate_);
+  updateInc();
   phase_.reset();
   if (style_ == STYLE_TWOTONE) twotone_.reset();
 }
 
 void Engine::tick(uint32_t dtUs) {
+  lfo_.advance(dtUs);
+  if (lfo_.modulates(Lfo::RATE)) updateInc();
   phase_.advance(dtUs, inc_);
   // Two-tone LEDs run off the base period: this frame's progress in 2^24 units of it.
   if (style_ == STYLE_TWOTONE) twotone_.advance((uint32_t)(((uint64_t)dtUs * inc_) >> 16));
@@ -34,7 +37,17 @@ void Engine::tick(uint32_t dtUs) {
 void Engine::setRate(uint16_t r) {
   rate_ = r > WIRE_MAX ? WIRE_MAX : r;
   // Only the increment changes, never the phase, so the effect doesn't jump.
-  inc_ = rates_.inc(rate_);
+  updateInc();
+}
+
+void Engine::setLfo(bool on, uint8_t target, uint16_t mHz, uint16_t depth) {
+  lfo_.set(on, target, mHz, depth);
+  updateInc();
+}
+
+void Engine::lfoOff() {
+  lfo_.off();
+  updateInc();
 }
 
 void Engine::setColor(uint8_t slot, uint32_t rgb) {
@@ -71,7 +84,8 @@ void Engine::render(Frame& f) const {
 }
 
 uint8_t Engine::outputBrightness() const {
-  return core::outputBrightness(def_.bMin, def_.bMax, brightness_, global_);
+  uint16_t b = lfo_.modulates(Lfo::BRIGHTNESS) ? lfo_.apply(brightness_) : brightness_;
+  return core::outputBrightness(def_.bMin, def_.bMax, b, global_);
 }
 
 }  // namespace core

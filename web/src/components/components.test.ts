@@ -7,12 +7,14 @@ import { exportDocument, styleDefaults } from '../presets/preset'
 import { useDialogStore } from '../stores/dialog'
 import { useEditorStore } from '../stores/editor'
 import { useGlobalStore } from '../stores/global'
+import { useLfoStore } from '../stores/lfo'
 import { useLiveStore } from '../stores/live'
 import { usePresetsStore } from '../stores/presets'
 import { recordSent } from '../testing/sent'
 import AppDialog from './AppDialog.vue'
 import CurrentPanel from './CurrentPanel.vue'
 import GlobalBrightness from './GlobalBrightness.vue'
+import LfoPanel from './LfoPanel.vue'
 import PresetEditor from './PresetEditor.vue'
 import PresetList from './PresetList.vue'
 import PresetTransfer from './PresetTransfer.vue'
@@ -217,6 +219,41 @@ describe('CurrentPanel', () => {
     useLiveStore().show({ ...styleDefaults(), rate: 0.1, brightness: 0.2 }, null)
     await flushPromises()
     expect(w.findAll('input').map((i) => (i.element as HTMLInputElement).value)).toEqual(['0.1', '0.2'])
+  })
+})
+
+describe('LfoPanel', () => {
+  it('has an Enable switch, Destination, a log Rate and Intensity', async () => {
+    const w = mount(LfoPanel)
+    const toggle = w.get('input[role="switch"]')
+    expect((toggle.element as HTMLInputElement).checked).toBe(false)
+    expect(w.findAll('option').map((o) => o.text())).toEqual(['Rate', 'Brightness'])
+    expect(w.findAll('.ends').map((e) => e.text())).toEqual(['slowfast', 'lowhigh'])
+    expect(w.findAll('output').map((o) => o.text())).toEqual(['1.0 Hz', '50%'])
+
+    await toggle.setValue(true)
+    await w.get('select').setValue('rate')
+    const [rate, intensity] = w.findAll('input[type="range"]')
+    await rate?.setValue('0.5') // log midpoint
+    await intensity?.setValue('0.75')
+    expect(w.findAll('output').map((o) => o.text())).toEqual(['0.50 Hz', '75%'])
+    await toggle.setValue(false)
+    expect(sent).toEqual([
+      { type: 'L', on: 1, target: 1, mHz: 1000, depth: 500 },
+      { type: 'L', on: 1, target: 0, mHz: 1000, depth: 500 },
+      { type: 'L', on: 1, target: 0, mHz: 500, depth: 500 },
+      { type: 'L', on: 1, target: 0, mHz: 500, depth: 750 },
+      { type: 'L', on: 0, target: 0, mHz: 500, depth: 750 },
+    ])
+  })
+
+  it('switches off when a preset loads', async () => {
+    const w = mount(LfoPanel)
+    await w.get('input[role="switch"]').setValue(true)
+    useLiveStore().show(styleDefaults(), null)
+    await flushPromises()
+    expect((w.get('input[role="switch"]').element as HTMLInputElement).checked).toBe(false)
+    expect(useLfoStore().on).toBe(false)
   })
 })
 

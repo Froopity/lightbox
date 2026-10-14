@@ -91,8 +91,15 @@ void dump(Writer& w, const Engine& e, uint16_t fps) {
   w.num(e.global());
   for (uint8_t i = 0; i < MAX_COLORS; i++) w.sp(), w.hex6(e.color(i));
   for (uint8_t i = 0; i < MAX_PARAMS; i++) w.sp(), w.num(e.param(i));
-  // LFO on, target, mHz, depth: placeholders until Phase 6.
-  for (uint8_t i = 0; i < 4; i++) w.sp(), w.num(0);
+  const Lfo& l = e.lfo();
+  w.sp();
+  w.num(l.on());
+  w.sp();
+  w.num(l.target());
+  w.sp();
+  w.num(l.mHz());
+  w.sp();
+  w.num(l.depth());
   w.sp();
   w.num(fps);
 }
@@ -123,6 +130,7 @@ Result apply(Args a, Engine& e, uint16_t fps, Writer& w) {
       for (uint8_t i = 0; i < MAX_PARAMS; i++)
         if (!a.num(params[i])) return ERR_ARGS;
       if (!a.done()) return ERR_ARGS;
+      e.lfoOff();
       e.loadStyle((uint8_t)style);
       e.setRate(r);
       e.setBrightness(b);
@@ -150,6 +158,14 @@ Result apply(Args a, Engine& e, uint16_t fps, Writer& w) {
       if (!a.num(idx) || !a.num(v) || !a.done() || idx >= e.paramCount()) return ERR_ARGS;
       e.setParam((uint8_t)idx, v);
       break;
+    case 'L': {
+      uint16_t on, target, mHz, depth;
+      if (!a.num(on, 1) || !a.num(target, 1) || !a.num(mHz, Lfo::MHZ_MAX) || mHz < Lfo::MHZ_MIN ||
+          !a.num(depth, WIRE_MAX) || !a.done())
+        return ERR_ARGS;
+      e.setLfo(on, (uint8_t)target, mHz, depth);
+      break;
+    }
     default:
       return ERR_UNKNOWN;
   }

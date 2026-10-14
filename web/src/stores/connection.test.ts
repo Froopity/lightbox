@@ -6,6 +6,7 @@ import { styleById } from '../styles/registry'
 import { installFakeSerial, removeFakeSerial } from '../testing/installFakeSerial'
 import type { FakeSerial } from '../testing/fakeSerial'
 import { useConnectionStore } from './connection'
+import { useLfoStore } from './lfo'
 import { useLiveStore } from './live'
 
 let serial: FakeSerial
@@ -100,6 +101,24 @@ describe('connection store', () => {
     await vi.waitFor(() => expect(connection.status).toBe('connected'))
     expect(serial.port.opens).toBe(2)
     expect(serial.port.device.model.state.style).toBe(1)
+  })
+
+  it('a running LFO is resent after P and G on reconnect, and the board matches', async () => {
+    const { connection, live } = stores()
+    await connection.connect()
+    showAlarm(live)
+    const lfo = useLfoStore()
+    lfo.setTarget('rate')
+    lfo.setOn(true)
+    await vi.waitFor(() => expect(serial.port.device.model.state.lfo).toEqual({ on: 1, target: 0, mHz: 1000, depth: 500 }))
+    serial.port.unplug()
+    await vi.waitFor(() => expect(connection.status).toBe('reconnecting'))
+    serial.port.device.reset()
+    serial.port.replug()
+    await vi.waitFor(() => expect(connection.status).toBe('connected'))
+    expect(connection.error).toBeNull()
+    expect(serial.port.device.lines.slice(-4).map((l) => l[0])).toEqual(['P', 'G', 'L', '?'])
+    expect(serial.port.device.model.state.lfo.on).toBe(1)
   })
 
   it('keeps polling for the port when the connect event is missed', async () => {
