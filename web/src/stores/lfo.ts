@@ -14,7 +14,7 @@ export type LfoDestination = 'rate' | 'brightness'
 export const HZ_MIN = LFO_MHZ_MIN / 1000
 export const HZ_MAX = LFO_MHZ_MAX / 1000
 
-/** The rate slider is log-scaled: position 0..1 → 0.05..5 Hz, rounded to the wire's millihertz. */
+/** The rate slider is log-scaled: position 0..1 → 0.01..5 Hz, rounded to the wire's millihertz. */
 export function hzFromPosition(u: number): number {
   const hz = HZ_MIN * (HZ_MAX / HZ_MIN) ** Math.min(1, Math.max(0, u))
   return Math.round(hz * 1000) / 1000

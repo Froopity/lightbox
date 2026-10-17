@@ -46,7 +46,7 @@ static void test_clamps_to_range() {
 }
 
 static void test_period_is_exact() {
-  const uint16_t rates[] = {50, 733, 5000};
+  const uint16_t rates[] = {10, 733, 5000};
   for (uint16_t mHz : rates) {
     Lfo l;
     l.set(true, Lfo::RATE, mHz, 500);

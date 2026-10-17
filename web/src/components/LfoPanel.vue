@@ -9,7 +9,7 @@ const lfo = useLfoStore()
 const { on, target, hz, depth } = storeToRefs(lfo)
 
 const position = computed(() => positionFromHz(hz.value))
-const hzText = computed(() => `${hz.value < 1 ? hz.value.toFixed(2) : hz.value.toFixed(1)} Hz`)
+const hzText = computed(() => `${hz.value.toFixed(hz.value < 0.1 ? 3 : hz.value < 1 ? 2 : 1)} Hz`)
 const depthText = computed(() => `${Math.round(depth.value * 100)}%`)
 
 function onToggle(e: Event): void {

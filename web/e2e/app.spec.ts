@@ -362,13 +362,13 @@ test('LFO: enable, change settings live, and a preset load turns it off', async 
   await lfo(page).getByLabel('Destination').selectOption('Rate')
   await lfo(page).getByLabel('Rate', { exact: true }).fill('0')
   await lfo(page).getByLabel('Intensity').fill('1')
-  await expect.poll(() => fakeState(page)).toMatchObject({ lfo: { on: 1, target: 0, mHz: 50, depth: 1000 } })
-  await expect(lfo(page).getByText('0.05 Hz')).toBeVisible()
+  await expect.poll(() => fakeState(page)).toMatchObject({ lfo: { on: 1, target: 0, mHz: 10, depth: 1000 } })
+  await expect(lfo(page).getByText('0.010 Hz')).toBeVisible()
   // The live values themselves don't move: the board does the modulation.
   expect(await fakeState(page)).toMatchObject({ rate: 500, brightness: 800 })
 
   await rows(page).nth(1).click()
-  await expect.poll(() => fakeState(page)).toMatchObject({ style: 1, lfo: { on: 0, target: 0, mHz: 50, depth: 1000 } })
+  await expect.poll(() => fakeState(page)).toMatchObject({ style: 1, lfo: { on: 0, target: 0, mHz: 10, depth: 1000 } })
   await expect(enable).not.toBeChecked()
   expect((await sentLines(page)).at(-1)?.[0]).toBe('P') // P alone turns it off
 
@@ -377,7 +377,7 @@ test('LFO: enable, change settings live, and a preset load turns it off', async 
   await page.waitForTimeout(200)
   expect(await fakeState(page)).toMatchObject({ lfo: { on: 0, depth: 1000 } })
   await enable.check()
-  await expect.poll(() => fakeState(page)).toMatchObject({ lfo: { on: 1, target: 0, mHz: 50, depth: 300 } })
+  await expect.poll(() => fakeState(page)).toMatchObject({ lfo: { on: 1, target: 0, mHz: 10, depth: 300 } })
   await enable.uncheck()
   await expect.poll(() => fakeState(page)).toMatchObject({ lfo: { on: 0 } })
 })

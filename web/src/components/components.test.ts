@@ -236,14 +236,14 @@ describe('LfoPanel', () => {
     const [rate, intensity] = w.findAll('input[type="range"]')
     await rate?.setValue('0.5') // log midpoint
     await intensity?.setValue('0.75')
-    expect(w.findAll('output').map((o) => o.text())).toEqual(['0.50 Hz', '75%'])
+    expect(w.findAll('output').map((o) => o.text())).toEqual(['0.22 Hz', '75%'])
     await toggle.setValue(false)
     expect(sent).toEqual([
       { type: 'L', on: 1, target: 1, mHz: 1000, depth: 500 },
       { type: 'L', on: 1, target: 0, mHz: 1000, depth: 500 },
-      { type: 'L', on: 1, target: 0, mHz: 500, depth: 500 },
-      { type: 'L', on: 1, target: 0, mHz: 500, depth: 750 },
-      { type: 'L', on: 0, target: 0, mHz: 500, depth: 750 },
+      { type: 'L', on: 1, target: 0, mHz: 224, depth: 500 },
+      { type: 'L', on: 1, target: 0, mHz: 224, depth: 750 },
+      { type: 'L', on: 0, target: 0, mHz: 224, depth: 750 },
     ])
   })
 

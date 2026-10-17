@@ -20,7 +20,7 @@ Read all of it before starting any phase.
 | UI layout | Follows the sketch `docs/UI design.png` (same content in `docs/UI design.svg`), agreed 2026-10-13, except that the editor only appears while editing, in place of Current (Phase 5 gate). See §5 Layout. |
 | Shortcuts | `1`–`9` select preset by list position; `B` toggles blackout; arrows nudge live values (Phase 5). |
 | Disconnect | The Arduino is powered over USB, so unplugging it turns the LEDs off (accepted hardware limitation, no special handling). UI shows a banner, reconnects automatically when the port comes back, and resends the full state. |
-| LFO | Runs in firmware. Sine only. 0.05–5 Hz, depth 0–100%. Targets either rate or brightness. |
+| LFO | Runs in firmware. Sine only. 0.01–5 Hz (minimum lowered from 0.05 after the Phase 6 gate), depth 0–100%. Targets either rate or brightness. |
 | Verification | Board will be attached to the dev machine. Agents compile, flash, and run serial smoke tests themselves; the user checks visuals at phase gates. |
 | Workflow | Commit to `main`. Stop at the end of each phase for user sign-off. Never start the next phase without it. |
 
@@ -94,7 +94,7 @@ The UI works in floats in [0,1]. On the wire, values are integers.
 | brightness `b` | 0–1000 | style byte = B_min + (B_max − B_min) · (b/1000)² |
 | global `g` | 0–1000 | output = style byte · (g/1000)², 0 = fully off |
 | LFO depth | 0–1000 | see §6 |
-| LFO rate | 50–5000 | millihertz |
+| LFO rate | 10–5000 | millihertz |
 
 The final brightness is applied with `FastLED.setBrightness(output)`, with dithering left on. Effects render at full value. B_min = 4 and B_max = 255 for every style for now; both live in `styles.json`.
 
@@ -217,7 +217,7 @@ B <b>                              live brightness
 G <g>                              global brightness
 C <slot> <rrggbb>                  one colour
 A <idx> <value>                    one algorithm param (wire units, clamped to styles.json range)
-L <on 0|1> <target 0=rate|1=bright> <mHz 50–5000> <depth 0–1000>   LFO (Phase 6)
+L <on 0|1> <target 0=rate|1=bright> <mHz 10–5000> <depth 0–1000>   LFO (Phase 6)
 ?                                  dump → "S <style> <r> <b> <g> <c0> <c1> <a0..a3> <lfoOn> <lfoT> <mHz> <depth> <fps>"
 ```
 Unused colour/param slots are sent as `000000` / `0`. Error codes: 1 checksum, 2 unknown command, 3 bad arguments, 4 line too long.
@@ -285,7 +285,7 @@ Use `?` after connecting to verify the firmware state matches the UI.
 Below it, columns from left to right (the editor and Current share the second one):
 1. **Presets.** A full-height list. Each row has a drag handle, a 1–9 number badge, the name, ✎ (open editor) and a radio showing which preset is active. Clicking the row or its radio selects it. The active row also shows a ↻ (reload preset). The list scrolls, and a `+` (new preset) button sits at its bottom right.
 2. **Edit/Create**, only while a preset is being edited or created, in place of Current and LFO, covering both (you aren't playing live while editing; Phase 5 gate). The editor panel, titled with ✕ at the top right: Name (text), Style (dropdown), Colour/s (one swatch per style colour, each opens the native colour picker), Rate (slow…fast), Brightness (dark…bright), then the style's algorithm params. Footer: **Save** (primary), plus Duplicate and Delete (confirm) for existing presets.
-   **Current** (Phase 5) above **LFO** (Phase 6), whenever the editor is closed. Current: Rate (slow…fast) and Brightness (dark…bright) sliders, each with a ↻ reset at its right end. LFO: an Enable toggle at the top right, Destination (dropdown: Rate / Brightness), Rate (slow…fast, log 0.05–5 Hz) and Intensity (low…high = depth). Before their phase lands, these panels are left out (not shown disabled).
+   **Current** (Phase 5) above **LFO** (Phase 6), whenever the editor is closed. Current: Rate (slow…fast) and Brightness (dark…bright) sliders, each with a ↻ reset at its right end. LFO: an Enable toggle at the top right, Destination (dropdown: Rate / Brightness), Rate (slow…fast, log 0.01–5 Hz) and Intensity (low…high = depth). Before their phase lands, these panels are left out (not shown disabled).
 3. **Brightness** (global). A tall vertical slider (top = 100%, bottom = off) with a ↻ (100%) below it.
 
 ↻ buttons are plain icon buttons that match the rest of the UI, not the sketch's dark filled squares (changed at the Phase 3 gate). Reuse one `ResetButton` component everywhere.
@@ -300,7 +300,7 @@ For the target value v ∈ [0,1] (live rate or live brightness, normalised) and 
 `v' = clamp(v + (δ/2) · sin 2πφ_L, 0, 1)`. Depth 100% swings over the full range peak-to-peak.
 v' feeds the normal mapping in §2.2. Rate modulation changes the phase increment only, so the effect never jumps.
 The LFO keeps running if the browser closes (the board stays powered over USB). `P` turns it off.
-The UI rate slider is log-scaled, 0.05–5 Hz.
+The UI rate slider is log-scaled, 0.01–5 Hz.
 Implementation (Phase 6, `lib/core/lfo.h`): `sinSmooth` once per frame (exact at ±1, so 100% reaches both ends). A rate target re-evaluates the
 rate table each frame; a brightness target only changes the `setBrightness` byte. Turning it off returns to the unmodulated values at once.
 The live values (`R`/`B`, the Current sliders, the `?` dump) are never modulated: the LFO works on a copy each frame.
@@ -355,7 +355,7 @@ Within a phase, firmware and web work can run as two parallel agents once the `s
 
 ### Phase 6 — LFO
 1. Firmware LFO (§6) + `L` command + `?` fields + native tests (clamping, phase continuity, P turns it off).
-2. LFO panel (third column, below Current): Enable toggle, Destination (Rate/Brightness), Rate (log 0.05–5 Hz), Intensity (depth). Off by default and on every preset load.
+2. LFO panel (third column, below Current): Enable toggle, Destination (Rate/Brightness), Rate (log 0.01–5 Hz), Intensity (depth). Off by default and on every preset load.
 3. Tests + smoke additions.
 4. **Gate checklist:** brightness wobble and rate wobble feel musical across the range; the LFO keeps running with the browser closed; loading a preset stops it.
 

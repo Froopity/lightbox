@@ -9,7 +9,7 @@ namespace core {
 class Lfo {
  public:
   enum Target : uint8_t { RATE = 0, BRIGHTNESS = 1 };
-  static constexpr uint16_t MHZ_MIN = 50, MHZ_MAX = 5000;
+  static constexpr uint16_t MHZ_MIN = 10, MHZ_MAX = 5000;
 
   // Settings are kept while it's off. Turning it on restarts its phase at 0, where the offset is 0,
   // so nothing jumps. Changing settings while it's on keeps the phase.

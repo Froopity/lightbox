@@ -21,7 +21,7 @@ export type Command =
 /** What the LFO moves, as on the wire: 0 = rate, 1 = brightness. */
 export type LfoTarget = 0 | 1
 /** LFO rate range on the wire, in millihertz (PLAN.md §2.2). */
-export const LFO_MHZ_MIN = 50
+export const LFO_MHZ_MIN = 10
 export const LFO_MHZ_MAX = 5000
 
 export const ErrorCode = { checksum: 1, unknownCommand: 2, badArguments: 3, lineTooLong: 4 } as const

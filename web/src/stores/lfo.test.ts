@@ -51,11 +51,11 @@ describe('lfo store', () => {
     ])
   })
 
-  it('clamps to 0.05–5 Hz and depth 0..1', () => {
+  it('clamps to 0.01–5 Hz and depth 0..1', () => {
     const lfo = useLfoStore()
     lfo.setHz(0.001)
     lfo.setDepth(-1)
-    expect(lfo.command()).toMatchObject({ mHz: 50, depth: 0 })
+    expect(lfo.command()).toMatchObject({ mHz: 10, depth: 0 })
     lfo.setHz(99)
     lfo.setDepth(3)
     expect(lfo.command()).toMatchObject({ mHz: 5000, depth: 1000 })
@@ -85,13 +85,13 @@ describe('lfo store', () => {
     expect({ target: lfo.target, hz: lfo.hz, depth: lfo.depth }).toEqual({ target: 'rate', hz: 5, depth: 0 })
   })
 
-  it('the rate slider is log-scaled over 0.05–5 Hz', () => {
+  it('the rate slider is log-scaled over 0.01–5 Hz', () => {
     expect(hzFromPosition(0)).toBe(HZ_MIN)
     expect(hzFromPosition(1)).toBe(HZ_MAX)
-    expect(hzFromPosition(0.5)).toBe(0.5) // the geometric midpoint
+    expect(hzFromPosition(0.5)).toBe(0.224) // the geometric midpoint, √(0.01·5)
     expect(hzFromPosition(-1)).toBe(HZ_MIN)
-    expect(positionFromHz(0.5)).toBeCloseTo(0.5)
-    for (const hz of [0.05, 0.123, 1, 4.2, 5]) expect(hzFromPosition(positionFromHz(hz))).toBe(hz)
+    expect(positionFromHz(Math.sqrt(0.05))).toBeCloseTo(0.5)
+    for (const hz of [0.01, 0.05, 0.123, 1, 4.2, 5]) expect(hzFromPosition(positionFromHz(hz))).toBe(hz)
   })
 })
 
