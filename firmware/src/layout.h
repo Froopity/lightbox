@@ -1,8 +1,7 @@
 // Logical → physical LED mapping (PLAN.md §2.1).
-// 7 strips × 18 on pins 2–8 (hardware changed 2026-10-25). NOT YET CALIBRATED: identity mapping assumed
-// (pin 2 = bottom … pin 8 = top, LED 0 of each strip lined up, all strips the same direction) until the
-// calibration gate is re-run (`make calibrate`, then `make verify-layout`).
-// The 3 × 17 build was: identity mapping, increasing logical column = anticlockwise seen from above.
+// 7 strips × 18 on pins 2–8 (hardware changed 2026-10-25). Calibrated 2026-10-25: pin 2 = bottom … pin 8 = top;
+// LED 0 of each strip lines up vertically; all strips run the same direction; 18 LEDs wrap once.
+// The 3 × 17 build was the same identity mapping, with increasing logical column = anticlockwise seen from above.
 #pragma once
 #include <stdint.h>
 

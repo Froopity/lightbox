@@ -8,7 +8,7 @@ Read all of it before starting any phase.
 | Topic | Decision |
 |---|---|
 | Board | Classic Arduino Nano, ATmega328P (2 KB RAM, 32 KB flash). Budget: ≤ 75% RAM, ≤ 85% flash. |
-| LEDs | WS2812B, GRB, **7 strips × 18** on pins 2–8, each strip a ring around the cylinder (changed 2026-10-25 from 3 × 17 on pins 2, 3, 4; see §7 Hardware change). Not yet recalibrated: `layout.h` assumes the identity mapping (pin 2 = bottom … pin 8 = top, no offset, no reversal). The 3 × 17 build was calibrated in Phase 0 as identity, with increasing column = anticlockwise from above. |
+| LEDs | WS2812B, GRB, **7 strips × 18** on pins 2–8, each strip a ring around the cylinder (changed 2026-10-25 from 3 × 17 on pins 2, 3, 4; see §7 Hardware change). Recalibrated 2026-10-25: identity mapping (pin 2 = bottom … pin 8 = top, no offset, no reversal), 18 LEDs wrap once. The 3 × 17 build was calibrated in Phase 0 as identity, with increasing column = anticlockwise from above. |
 | Architecture | All effects run **on the Arduino**. Browser sends small commands only. |
 | Boot behaviour | Fixed default: Ominous Glow, default colour, rate 0.5, brightness 0.8, global 1.0. No EEPROM. |
 | Transitions | Hard cut between presets. |
@@ -374,12 +374,13 @@ Within a phase, firmware and web work can run as two parallel agents once the `s
 The lightbox was rebuilt as 7 strips × 18 LEDs, each a ring around the cylinder, one data pin each (2–8). Decisions (user, 2026-10-25):
 7 rings (7 rows × 18 wrapping columns); pins 2–8; compact Two-tone to 3 B/LED to stay in the RAM budget; Vertical Pulse keeps its
 climb span with finer steps (§3.4). Alarm lines are now exactly 9 apart; Lighthouse `front` runs 0–17; Alarm `tail` stays 0–8 columns.
-1. Done: geometry, effects, tests, fixtures, `layout.h` (identity, uncalibrated), RAM cuts (Two-tone, rate table to flash, serial buffers), fps check.
+1. Done: geometry, effects, tests, fixtures, `layout.h` (identity), RAM cuts (Two-tone, rate table to flash, serial buffers), fps check.
 2. **Gate:** `make calibrate`. Each strip lights LED 0 white and LEDs 1–3 in its colour, rainbow order: pin 2 red, 3 orange, 4 yellow,
-   5 green, 6 cyan, 7 blue, 8 magenta. Ask the user the order from bottom to top, whether the white LEDs line up vertically (if not, how many
+   5 green, 6 cyan, 7 blue, 8 magenta; the last LED is dim white, next to LED 0 if the strip wraps once. Ask the user the order from bottom to top, whether the white LEDs line up vertically (if not, how many
    apart), whether every tail runs the same direction, and whether 18 LEDs wrap exactly once. Fill in `layout.h`, then `make verify-layout`
    (column 0 on all rows, a dot sweeping columns 0→17 on row 0) and get the user's confirmation. Then `make demo`: Alarm lines vertical and
    opposite each other, Pulse climbing smoothly through 7 rows, Two-tone random across all 126, Lighthouse beam width and front column.
+   **Calibrated 2026-10-25:** rainbow order bottom to top, LED 0s line up, all tails the same direction, 18 wrap once → identity `layout.h`.
 
 ## 8. Risks & notes for agents
 - **RAM:** 2 KB total; 1,517 B (74.1%) at 7 × 18. FastLED frame 378 B (render directly into `leds[]` through the layout map; there is no room for a second buffer) + 7 FastLED controllers ≈ 43 B each (object + vtable, which AVR keeps in RAM) + Two-tone 378 B + `Serial` with 16 B RX/TX buffers (`-DSERIAL_*_BUFFER_SIZE` in `[main]`, saves 96 B; the handshake reads each line in a tight loop) + line buffer 72 B. Don't use `String` or dynamic allocation in firmware. Keep string literals in `F()`/PROGMEM.
