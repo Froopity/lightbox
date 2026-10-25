@@ -9,7 +9,7 @@
 namespace core {
 namespace protocol {
 
-constexpr uint8_t VERSION = 1;
+constexpr uint8_t VERSION = 2;  // 2: five param slots
 constexpr uint8_t MAX_LINE = 72;  // bytes, checksum included, '\n' excluded
 
 enum Result : uint8_t { OK = 0, ERR_CHECKSUM = 1, ERR_UNKNOWN = 2, ERR_ARGS = 3, ERR_TOO_LONG = 4 };

@@ -7,6 +7,8 @@ export interface ParamSpec {
   default: number
   scale: number
   unit?: string
+  /** A dropdown instead of a slider: option i is wire value wireMin + i. */
+  options?: string[]
 }
 
 export interface StyleSpec {
@@ -24,7 +26,7 @@ export interface StyleSpec {
 
 /** Fixed slot counts on the wire: unused colours/params are sent as 000000 / 0. */
 export const MAX_COLORS = 2
-export const MAX_PARAMS = 4
+export const MAX_PARAMS = 5
 /** Normalised controls run 0..WIRE_MAX on the wire (PLAN.md §2.2). */
 export const WIRE_MAX = 1000
 /** Boot defaults (PLAN.md §0): rate 0.5, brightness 0.8, global 1.0. */

@@ -158,9 +158,30 @@ describe('PresetEditor', () => {
     expect(sent.at(-1)).toMatchObject({ type: 'P', style: 2, colors: ['#FF4000', '#8000FF'] })
 
     await w.get('select').setValue('lighthouse')
-    expect(w.findAll('output').map((o) => o.text())).toEqual(['0.6', '0.5', '5 cols', '0'])
-    for (const label of ['Whip', 'Flash', 'Width', 'Front column']) expect(w.text()).toContain(label)
-    expect(sent.at(-1)).toMatchObject({ type: 'P', style: 4, params: [60, 50, 5, 0] })
+    expect(w.findAll('output').map((o) => o.text())).toEqual(['0.6', '0.5', '5 cols', '0', '1'])
+    for (const label of ['Whip', 'Flash', 'Width', 'Front column', 'Beams']) expect(w.text()).toContain(label)
+    expect(sent.at(-1)).toMatchObject({ type: 'P', style: 4, params: [60, 50, 5, 0, 1] })
+  })
+
+  it('shows each style\'s options with their units', async () => {
+    const w = await editAlarm()
+    expect(w.findAll('output').map((o) => o.text())).toEqual(['0 cols', '2'])
+    await w.get('select').setValue('ominous')
+    expect(w.findAll('output').map((o) => o.text())).toEqual(['10%'])
+    await w.get('select').setValue('twotone')
+    expect(w.text()).toContain('Colour 1 share')
+    expect(sent.at(-1)).toMatchObject({ type: 'P', style: 2, params: [50] })
+  })
+
+  it('renders an options param as a dropdown that sends its wire value', async () => {
+    const w = await editAlarm()
+    await w.get('select').setValue('pulse')
+    expect(w.findAll('output').map((o) => o.text())).toEqual(['10.88 rows', '0'])
+    const shape = w.findAll('select')[1]
+    expect(shape?.findAll('option').map((o) => o.text())).toEqual(['Accelerate', 'Fast middle', 'Decelerate'])
+    await shape?.setValue('2')
+    expect(sent.at(-1)).toEqual({ type: 'A', idx: 2, value: 2 })
+    expect(useEditorStore().draft?.params.shape).toBe(2)
   })
 
   it('✕ discards', async () => {

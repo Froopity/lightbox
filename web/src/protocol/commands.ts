@@ -2,7 +2,7 @@
 import { MAX_COLORS, MAX_PARAMS } from '../styles/types'
 import { withChecksum } from './checksum'
 
-export const PROTOCOL_VERSION = 1
+export const PROTOCOL_VERSION = 2
 export const MAX_LINE = 72
 export const WAKE_BYTE = 0x01
 export const CTS_CHAR = '!'

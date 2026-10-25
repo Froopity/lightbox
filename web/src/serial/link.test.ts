@@ -13,7 +13,7 @@ function setup() {
 describe('Link', () => {
   it('exchanges a line over the wake/CTS handshake', async () => {
     const { link, device } = setup()
-    expect(await link.exchange(encode({ type: 'H' }))).toBe('OK lightbox 1')
+    expect(await link.exchange(encode({ type: 'H' }))).toBe('OK lightbox 2')
     expect(await link.exchange(encode({ type: 'G', global: 10 }))).toBe('OK')
     expect(device.lines).toEqual([encode({ type: 'H' }), encode({ type: 'G', global: 10 })])
     expect(device.model.state.global).toBe(10)
@@ -22,7 +22,7 @@ describe('Link', () => {
   it('retries the wake byte when it is lost', async () => {
     const { link, device } = setup()
     device.dropWakes = 2
-    expect(await link.exchange(encode({ type: 'H' }))).toBe('OK lightbox 1')
+    expect(await link.exchange(encode({ type: 'H' }))).toBe('OK lightbox 2')
   })
 
   it('retries the whole sequence on a bad checksum', async () => {
@@ -46,7 +46,7 @@ describe('Link', () => {
 
   it('does not retry commands the firmware rejects', async () => {
     const { link, device } = setup()
-    const err = await link.exchange(encode({ type: 'A', idx: 0, value: 1 })).catch((e: unknown) => e)
+    const err = await link.exchange(encode({ type: 'A', idx: 1, value: 1 })).catch((e: unknown) => e)
     expect(err).toBeInstanceOf(CommandError)
     expect((err as CommandError).code).toBe(3)
     expect(device.lines).toHaveLength(1)
@@ -62,10 +62,10 @@ describe('Link', () => {
 
   it('a later exchange still runs after an earlier one fails', async () => {
     const { link } = setup()
-    const bad = link.exchange(encode({ type: 'A', idx: 0, value: 1 }))
+    const bad = link.exchange(encode({ type: 'A', idx: 1, value: 1 }))
     const good = link.exchange(encode({ type: 'H' }))
     await expect(bad).rejects.toBeInstanceOf(CommandError)
-    expect(await good).toBe('OK lightbox 1')
+    expect(await good).toBe('OK lightbox 2')
   })
 
   it('reports a lost device and rejects further exchanges', async () => {

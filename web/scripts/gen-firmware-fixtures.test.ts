@@ -7,8 +7,8 @@ describe('gen-firmware-fixtures', () => {
     const out = render(bootState(), [
       { name: 'g', before: ['H*48'], line: 'G 5*52', expectReply: 'OK', expectState: { global: 5, colors: ['#ABCDEF'] } },
     ])
-    expect(out).toContain('BOOT_STATE[STATE_SLOTS] = {0, 500, 800, 1000, 0x9966CC, 0x000000, 0, 0, 0, 0, 0, 0, 0, 0};')
-    expect(out).toContain('{"g", {"H*48", nullptr, nullptr, nullptr}, "G 5*52", "OK", 0, {-1, -1, -1, 5, 0xABCDEF, -1, -1, -1, -1, -1, -1, -1, -1, -1}},')
+    expect(out).toContain('BOOT_STATE[STATE_SLOTS] = {0, 500, 800, 1000, 0x9966CC, 0x000000, 10, 0, 0, 0, 0, 0, 0, 0, 0};')
+    expect(out).toContain('{"g", {"H*48", nullptr, nullptr, nullptr}, "G 5*52", "OK", 0, {-1, -1, -1, 5, 0xABCDEF, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}},')
   })
 
   it('escapes quotes and backslashes', () => {

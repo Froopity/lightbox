@@ -37,7 +37,7 @@ describe('selecting presets', () => {
     const { editor, live, alarm } = setup()
     await editor.select(alarm.id)
     expect(live.activeId).toBe(alarm.id)
-    expect(sent).toEqual([{ type: 'P', style: 1, rate: 500, brightness: 800, colors: ['#FF0000'], params: [0] }])
+    expect(sent).toEqual([{ type: 'P', style: 1, rate: 500, brightness: 800, colors: ['#FF0000'], params: [0, 2] }])
     expect(live.current).toMatchObject({ style: 'alarm', rate: 0.5 })
   })
 
@@ -124,7 +124,7 @@ describe('editing', () => {
     editor.discard()
     expect(editor.isOpen).toBe(false)
     expect(presets.byId(alarm.id)).toEqual(alarm)
-    expect(sent.at(-1)).toEqual({ type: 'P', style: 1, rate: 500, brightness: 800, colors: ['#FF0000'], params: [0] })
+    expect(sent.at(-1)).toEqual({ type: 'P', style: 1, rate: 500, brightness: 800, colors: ['#FF0000'], params: [0, 2] })
   })
 
   it('changing style starts from that style’s defaults and keeps rate/brightness', async () => {
@@ -132,7 +132,7 @@ describe('editing', () => {
     await editor.edit(ominous.id)
     editor.setRate(0.2)
     editor.setStyle('alarm')
-    expect(editor.draft).toMatchObject({ name: 'Alarm', style: 'alarm', colors: ['#FF0000'], params: { tail: 0 }, rate: 0.2 })
+    expect(editor.draft).toMatchObject({ name: 'Alarm', style: 'alarm', colors: ['#FF0000'], params: { tail: 0, beams: 2 }, rate: 0.2 })
     expect(lastP()).toMatchObject({ style: 1, rate: 200 })
     editor.setName('Mine')
     editor.setStyle('ominous')
@@ -266,7 +266,7 @@ describe('live store', () => {
     await editor.select(alarm.id)
     live.setBrightness(0.3)
     expect(live.resyncCommands()).toEqual([
-      { type: 'P', style: 1, rate: 500, brightness: 300, colors: ['#FF0000'], params: [0] },
+      { type: 'P', style: 1, rate: 500, brightness: 300, colors: ['#FF0000'], params: [0, 2] },
       { type: 'G', global: 1000 },
     ])
   })

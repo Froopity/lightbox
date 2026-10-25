@@ -15,7 +15,7 @@ import {
   styleDefaults,
 } from './preset'
 
-const alarm = { id: 'a', name: 'Red', style: 'alarm', colors: ['#ff0000'], rate: 0.25, brightness: 1, params: { tail: 4 } }
+const alarm = { id: 'a', name: 'Red', style: 'alarm', colors: ['#ff0000'], rate: 0.25, brightness: 1, params: { tail: 4, beams: 2 } }
 
 describe('seedPresets', () => {
   it('has one preset per style at its defaults', () => {
@@ -23,9 +23,10 @@ describe('seedPresets', () => {
     expect(seeded.map((p) => p.style)).toEqual(STYLES.map((s) => s.key))
     expect(seeded.map((p) => p.name)).toEqual(STYLES.map((s) => s.name))
     expect(new Set(seeded.map((p) => p.id)).size).toBe(seeded.length)
-    expect(seeded[1]).toMatchObject({ colors: ['#FF0000'], rate: 0.5, brightness: 0.8, params: { tail: 0 } })
-    expect(seeded[2]).toMatchObject({ name: 'Two-tone Glow', colors: ['#FF4000', '#8000FF'], params: {} })
-    expect(seeded[4]).toMatchObject({ name: 'Lighthouse', params: { whip: 60, flash: 50, width: 5, front: 0 } })
+    expect(seeded[1]).toMatchObject({ colors: ['#FF0000'], rate: 0.5, brightness: 0.8, params: { tail: 0, beams: 2 } })
+    expect(seeded[2]).toMatchObject({ name: 'Two-tone Glow', colors: ['#FF4000', '#8000FF'], params: { ratio: 50 } })
+    expect(seeded[4]).toMatchObject({ name: 'Lighthouse', params: { whip: 60, flash: 50, width: 5, front: 0, beams: 1 } })
+    expect(seeded[3]).toMatchObject({ params: { thickness: 87, whip: 0, shape: 0 } })
   })
 
   it('seeds only the listed styles, in registry order', () => {
@@ -44,21 +45,21 @@ describe('repairPreset', () => {
 
   it('repairs bad fields from the style defaults', () => {
     const p = repairPreset({ style: 'alarm', name: 5, colors: ['red', '#00ff00'], rate: 'fast', brightness: NaN, params: { tail: 'x', bogus: 3 } })
-    expect(p).toMatchObject({ name: 'Alarm', colors: ['#FF0000'], rate: 0.5, brightness: 0.8, params: { tail: 0 } })
+    expect(p).toMatchObject({ name: 'Alarm', colors: ['#FF0000'], rate: 0.5, brightness: 0.8, params: { tail: 0, beams: 2 } })
     expect(p?.id).toMatch(/^[0-9a-f-]{36}$/)
   })
 
   it('clamps numbers into range and fits colours to the style', () => {
     const p = repairPreset({ ...alarm, name: '  Long '.padEnd(80, 'x'), rate: -1, brightness: 9, colors: ['#123456', '#654321'], params: { tail: 99.6 } })
-    expect(p).toMatchObject({ rate: 0, brightness: 1, colors: ['#123456'], params: { tail: 16 } })
+    expect(p).toMatchObject({ rate: 0, brightness: 1, colors: ['#123456'], params: { tail: 16, beams: 2 } })
     expect(p?.name).toHaveLength(40)
     expect(p?.name.startsWith('Long')).toBe(true)
-    expect(repairPreset({ ...alarm, params: { tail: -3 } })?.params).toEqual({ tail: 0 })
-    expect(repairPreset({ ...alarm, params: { tail: 2.4 } })?.params).toEqual({ tail: 2 })
+    expect(repairPreset({ ...alarm, params: { tail: -3 } })?.params).toEqual({ tail: 0, beams: 2 })
+    expect(repairPreset({ ...alarm, params: { tail: 2.4, beams: 9 } })?.params).toEqual({ tail: 2, beams: 6 })
   })
 
   it('fills missing colours and params', () => {
-    expect(repairPreset({ style: 'alarm' })).toMatchObject({ colors: ['#FF0000'], params: { tail: 0 } })
+    expect(repairPreset({ style: 'alarm' })).toMatchObject({ colors: ['#FF0000'], params: { tail: 0, beams: 2 } })
   })
 })
 
@@ -116,8 +117,8 @@ describe('export / import', () => {
 
 describe('presetCommand', () => {
   it('encodes a preset as an atomic load', () => {
-    expect(presetCommand(alarm)).toEqual({ type: 'P', style: 1, rate: 250, brightness: 1000, colors: ['#ff0000'], params: [4] })
-    expect(encode(presetCommand(alarm)).split('*')[0]).toBe('P 1 250 1000 FF0000 000000 4 0 0 0')
+    expect(presetCommand(alarm)).toEqual({ type: 'P', style: 1, rate: 250, brightness: 1000, colors: ['#ff0000'], params: [4, 2] })
+    expect(encode(presetCommand(alarm)).split('*')[0]).toBe('P 1 250 1000 FF0000 000000 4 2 0 0 0')
   })
 
   it('rounds normalised values to wire units', () => {

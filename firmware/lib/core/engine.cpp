@@ -62,23 +62,24 @@ void Engine::setParam(uint8_t idx, uint16_t value) {
 
 void Engine::render(Frame& f) const {
   Rgb c0 = rgbFrom(colors_[0]);
+  const uint8_t a0 = (uint8_t)params_[0], a1 = (uint8_t)params_[1], a2 = (uint8_t)params_[2];
   switch (style_) {
     case STYLE_ALARM:
-      alarm::render(f, phase_.value, c0, (uint8_t)params_[0]);
+      alarm::render(f, phase_.value, c0, a0, a1);
       break;
     case STYLE_TWOTONE:
-      twotone_.render(f, c0, rgbFrom(colors_[1]));
+      twotone_.render(f, c0, rgbFrom(colors_[1]), a0);
       break;
     case STYLE_PULSE:
-      pulse::render(f, phase_.value, c0);
+      pulse::render(f, phase_.value, c0, pulse::Params{a0, a1, a2});
       break;
     case STYLE_LIGHTHOUSE:
       lighthouse::render(f, phase_.value, c0,
-                         lighthouse::Params{(uint8_t)params_[0], (uint8_t)params_[1], (uint8_t)params_[2], (uint8_t)params_[3]});
+                         lighthouse::Params{a0, a1, a2, (uint8_t)params_[3], (uint8_t)params_[4]});
       break;
     case STYLE_OMINOUS:
     default:
-      ominous::render(f, phase_.value, c0);
+      ominous::render(f, phase_.value, c0, a0);
       break;
   }
 }

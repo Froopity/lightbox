@@ -30,7 +30,7 @@ static const char* send(Engine& e, const char* line, uint16_t fps = 0) {
 
 static void stateOf(const Engine& e, int32_t out[STATE_SLOTS]) {
   int32_t s[STATE_SLOTS] = {e.style(), e.rate(), e.brightness(), e.global(), (int32_t)e.color(0), (int32_t)e.color(1),
-                            e.param(0), e.param(1), e.param(2), e.param(3),
+                            e.param(0), e.param(1), e.param(2), e.param(3), e.param(4),
                             e.lfo().on(), e.lfo().target(), e.lfo().mHz(), e.lfo().depth()};
   memcpy(out, s, sizeof s);
 }
@@ -85,7 +85,7 @@ static void test_preset_restarts_phase() {
   Engine e;
   e.tick(250000);
   TEST_ASSERT_NOT_EQUAL(0, e.phase());
-  TEST_ASSERT_EQUAL_STRING("OK", send(e, "P 1 250 900 00FF00 000000 6 0 0 0*49"));
+  TEST_ASSERT_EQUAL_STRING("OK", send(e, "P 1 250 900 00FF00 000000 6 2 0 0 0*5B"));
   TEST_ASSERT_EQUAL_UINT32(0, e.phase());
 }
 

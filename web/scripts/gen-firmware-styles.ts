@@ -31,6 +31,11 @@ export function render(styles: StyleSpec[]): string {
     if (s.id !== i) throw new Error(`style ${s.key}: id ${s.id} must equal its index ${i}`)
     if (s.params.length > MAX_PARAMS) throw new Error(`style ${s.key}: more than ${MAX_PARAMS} params`)
     if (s.colors > MAX_COLORS) throw new Error(`style ${s.key}: more than ${MAX_COLORS} colours`)
+    for (const p of s.params) {
+      if (p.options && p.options.length !== p.wireMax - p.wireMin + 1) {
+        throw new Error(`style ${s.key}: param ${p.key} needs one option per wire value`)
+      }
+    }
   })
   const keys = styles.map((s) => `  STYLE_${s.key.toUpperCase()} = ${s.id},`)
   const lines = [

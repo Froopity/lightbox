@@ -114,25 +114,41 @@ Measured on hardware (Phase 1): Ominous ≈ 400 fps, Alarm ≈ 300 fps; `micros(
 Phase 4, at full rate (`make smoke` reports these): Two-tone ≈ 246 fps, Pulse ≈ 322 fps, Lighthouse ≈ 265 fps.
 Phase 6, with a 5 Hz full-depth LFO sweeping the rate: Ominous ≈ 399, Alarm ≈ 264, Two-tone ≈ 238, Pulse ≈ 305, Lighthouse ≈ 255 fps.
 7 × 18 (2026-10-25, 126 LEDs, `show()` alone ≈ 3.8 ms), full rate / with the LFO: Ominous 225/216, Alarm 174/170, Two-tone 130/128, Pulse 188/183, Lighthouse 171/166 fps.
+Algorithm options (2026-10-25, same board, same session as a re-run of the previous firmware, which measured 208/163/124/177/161):
+defaults at full rate Ominous 208, Alarm 176, Two-tone 124, Pulse 172, Lighthouse 167; heaviest params (every param at its maximum,
+Two-tone at 75%) with the LFO: 200, 159, 117, 167, 138 fps. Per-column/per-pixel work has no division or modulo (profile table,
+compare-and-subtract, per-frame reciprocals).
 Because rate changes alter the increment and never the phase, rate edits and LFO modulation never cause visual jumps.
 Target ≥ 100 fps. Report the measured fps in the `?` dump.
 
 ### 2.4 Styles (`shared/styles.json`)
 ```jsonc
 { "styles": [
-  { "id": 0, "key": "ominous", "name": "Ominous Glow", "colors": 1, "periodSlowMs": 8000, "periodFastMs": 1500, "params": [] },
+  { "id": 0, "key": "ominous", "name": "Ominous Glow", "colors": 1, "periodSlowMs": 8000, "periodFastMs": 1500,
+    "params": [{ "key": "floor", "label": "Minimum", "wireMin": 0, "wireMax": 100, "default": 10, "scale": 1, "unit": "%" }] },
   { "id": 1, "key": "alarm", "name": "Alarm", "colors": 1, "periodSlowMs": 2000, "periodFastMs": 300,
-    "params": [{ "key": "tail", "label": "Tail", "wireMin": 0, "wireMax": 16, "default": 0, "scale": 0.5, "unit": "cols" }] },
-  { "id": 2, "key": "twotone", "name": "Two-tone Glow", "colors": 2, "periodSlowMs": 6000, "periodFastMs": 1000, "params": [] },
-  { "id": 3, "key": "pulse", "name": "Vertical Pulse", "colors": 1, "periodSlowMs": 2800, "periodFastMs": 700, "params": [] },
+    "params": [
+      { "key": "tail",  "label": "Tail",  "wireMin": 0, "wireMax": 16, "default": 0, "scale": 0.5, "unit": "cols" },
+      { "key": "beams", "label": "Beams", "wireMin": 1, "wireMax": 6,  "default": 2, "scale": 1 } ] },
+  { "id": 2, "key": "twotone", "name": "Two-tone Glow", "colors": 2, "periodSlowMs": 6000, "periodFastMs": 1000,
+    "params": [{ "key": "ratio", "label": "Colour 1 share", "wireMin": 0, "wireMax": 100, "default": 50, "scale": 1, "unit": "%" }] },
+  { "id": 3, "key": "pulse", "name": "Vertical Pulse", "colors": 1, "periodSlowMs": 2800, "periodFastMs": 700,
+    "params": [
+      { "key": "thickness", "label": "Thickness",  "wireMin": 8, "wireMax": 160, "default": 87, "scale": 0.125, "unit": "rows" },
+      { "key": "whip",      "label": "Whip",       "wireMin": 0, "wireMax": 90,  "default": 0,  "scale": 0.01 },
+      { "key": "shape",     "label": "Whip shape", "wireMin": 0, "wireMax": 2,   "default": 0,  "scale": 1,
+        "options": ["Accelerate", "Fast middle", "Decelerate"] } ] },
   { "id": 4, "key": "lighthouse", "name": "Lighthouse", "colors": 1, "periodSlowMs": 10000, "periodFastMs": 2000,
     "params": [
       { "key": "whip",  "label": "Whip",  "wireMin": 0, "wireMax": 90,  "default": 60,  "scale": 0.01 },
       { "key": "flash", "label": "Flash", "wireMin": 0, "wireMax": 100, "default": 50,  "scale": 0.01 },
       { "key": "width", "label": "Width", "wireMin": 2, "wireMax": 9,   "default": 5,   "scale": 1, "unit": "cols" },
-      { "key": "front", "label": "Front column", "wireMin": 0, "wireMax": 17, "default": 0, "scale": 1 } ] }
+      { "key": "front", "label": "Front column", "wireMin": 0, "wireMax": 17, "default": 0, "scale": 1 },
+      { "key": "beams", "label": "Beams", "wireMin": 1, "wireMax": 4,   "default": 1,   "scale": 1 } ] }
 ]}
 ```
+A param with `options` is a dropdown: option i is wire value `wireMin + i` (the generator checks there is one per value).
+The most params any style has (5, Lighthouse) sets the wire's param slot count. New params are appended, so existing wire indices keep their meaning.
 Each style also has `bMin`/`bMax` (4/255) and `defaultColors`. These colour defaults can be tuned later: ominous `#9966CC`, alarm `#FF0000`, twotone `#FF4000`,`#8000FF`, pulse `#9966CC`, lighthouse `#FFD8A0`.
 Phases add styles to this file as they implement them. Phase 1 contains ids 0 and 1 only.
 
@@ -143,14 +159,16 @@ Use integer sin16/cos16 at runtime; the formulas below are the reference that na
 
 ### 3.1 Ominous Glow (Phase 1)
 All 126 LEDs are identical. A breathing glow:
-`I = D + (1 − D) · (1 − cos 2πφ) / 2`, with `D = 0.1` (constant). The trough is 10% of the peak (tuned at the Phase 1 gate from 0.25: "should go darker").
+`I = D + (1 − D) · (1 − cos 2πφ) / 2`, with `D` = param `floor` / 100 (default 10%, tuned at the Phase 1 gate from 0.25: "should go darker";
+a param since 2026-10-25, 0–100%: 0 breathes from black, 100 is a steady glow).
 Period 8 s (slow) → 1.5 s (fast).
-Tests: min/max over one period ≈ 0.1/1.0; the period is exact; changing rate mid-cycle causes no jump in I.
+Tests: min/max over one period ≈ D/1.0 for several D; the period is exact; changing rate mid-cycle causes no jump in I.
 
 ### 3.2 Alarm (Phase 1)
-Two full-brightness vertical lines (all rows identical) of the same colour, half a turn (9 columns) apart, rotating toward increasing column numbers.
+n full-brightness vertical lines (all rows identical) of the same colour, evenly spaced, rotating toward increasing column numbers.
+n = param `beams`, 1–6, default 2 (half a turn, 9 columns, apart; added 2026-10-25).
 **Hard-stepped** (Phase 1 gate: "just two full bright columns"): each line occupies exactly one column at full brightness and jumps to the next; no anti-aliasing.
-Head columns: `h₀ = ⌊18φ⌋`, `h₁ = ⌊18φ + 9⌋ mod 18`. With 18 columns the gap is always exactly 9 (with 3 × 17 it alternated 8/9).
+Head columns: `hᵢ = ⌊18φ + 18i/n⌋ mod 18`. With n = 1, 2, 3 or 6 the gaps are exact (18, 9, 6, 3); 4 lines alternate 4/5-column gaps and 5 lines 3/4 (as 2 lines on 3 × 17 alternated 8/9).
 For column c and head h, let `d = (h − c) mod 18` in whole columns; `d ∈ 1..9` is behind the head, `d ∈ 10..17` is ahead (dark).
 Optional tail, `L` = param `tail` in columns (default **0** = bare columns; kept so presets can dial one in):
 ```
@@ -158,9 +176,9 @@ f(d) = 1                         d = 0
        (1 − d/(L+1))²            1 ≤ d < L+1      (tail, behind the head only)
        0                         otherwise
 ```
-`I(c) = max(f(d₀), f(d₁))`.
+`I(c) = maxᵢ f(dᵢ)`: overlapping tails (6 lines, long tail) take the brighter value.
 Period (one revolution) 2 s → 0.3 s.
-Tests: head columns match ⌊18φ⌋ and ⌊18φ + 9⌋; L=0 gives exactly two columns at 255 and the rest 0; the tail only lights columns behind the head; at the fastest rate with 1 ms frames each line steps one column at a time and never skips.
+Tests: head columns match ⌊18φ + 18i/n⌋ for every n; L=0 gives exactly n columns at 255 and the rest 0; the tail only lights columns behind the head; at the fastest rate with 1 ms frames each line steps one column at a time and never skips.
 
 ### 3.3 Two-tone Glow (Phase 4)
 Each LED i (all 126 independently) has its own phase φᵢ (uint16) and multiplier mᵢ ∈ [0.5, 1.5] (uint8, stored as m·128).
@@ -174,7 +192,13 @@ dropped for RAM: each frame's step is rounded with a shared dither offset that a
 round up as often as their fraction says and periods stay exact on average. It's a plain `Engine` member: the other effects are
 pure functions of φ, so there is nothing to share a union with. The xorshift16 state carries on across `P` loads, so each load
 starts from a different pattern. A frame gap is clamped to one base cycle.
-Tests: continuity across a wrap; the distribution of mᵢ stays within bounds; the colour stays on the C–C2 line.
+**Ratio (2026-10-25):** param `ratio` ρ = C's share of the time, 0–100%, default 50 (unchanged behaviour). Each LED still swings fully
+C → C2 → C but holds at the favoured colour for part of its own cycle: for ρ > 50 it holds at C for 2ρ − 1 of the cycle, starting at the
+wrap; for ρ < 50 it holds at C2 for 1 − 2ρ, centred on half a cycle. The swing (phase remapped linearly onto the rest of the cycle) averages
+50/50, so C's mean share is exactly ρ; 100% is solid C and 0% solid C2. LEDs are still at C on every wrap, so re-rolls stay invisible.
+Implementation: `twotone::Share`, one division per frame, a 16 × 16 multiply per pixel, skipped entirely at 50%.
+Tests: continuity across a wrap; the distribution of mᵢ stays within bounds; the colour stays on the C–C2 line; C's mean share = ρ; the warp
+is continuous and at C on the wrap for every ρ; 50% is the identity.
 
 ### 3.4 Vertical Pulse (Phase 4) — port of `arduino/wave/wave.ino`
 Total cycle T (2.8 s → 0.7 s; the log midpoint 1.4 s matches wave.ino's 900 + 500 ms).
@@ -185,18 +209,31 @@ All columns in a row are identical. Rows climb from 0 (bottom) to 6.
 `T·3.2/14` after the bottom one), so `stagger = T·3.2/14 / (ROWS − 1)`. Rows 0, 3, 6 match wave.ino's rows 0, 1, 2 exactly.
 `sin8` and `dim8_video` are ported exactly from FastLED. As in wave.ino, `sin8(128p)` runs 128 → 255 → 128 (not from 0), so
 each row switches on at ≈ 65/255, swells to full and drops from ≈ 68/255 to black: a faithful port, including that edge.
-Tests: rows peak bottom to top; rows start evenly staggered; all rows are dark during the gap; rows 0, 3, 6 match wave.ino output at T = 1.4 s.
+**Thickness and whip (2026-10-25):**
+- `thickness`: band height in rows = how long each row glows, in mean staggers (`waveLen = thickness · span / (ROWS − 1)`), 1–20 rows in
+  eighths (wire 8–160), default 87/8 = 10.875 rows = wave.ino's `waveLen`. The climb span and the cycle stay; the dark gap absorbs the change
+  (20 rows still ends inside the cycle).
+- `whip` k = 0–0.9 (default 0, the even climb) and `shape` (dropdown). Row r starts at `span · w(u)`, u = r/(ROWS − 1):
+  Accelerate `w = u + k·u(1 − u)` (slow off the bottom, whips to the top), Fast middle `w = u + (k/2π)·sin 2πu` (lingers at both ends,
+  like Lighthouse's whip), Decelerate `w = u − k·u(1 − u)`. All monotonic for k < 1, w(0) = 0 and w(1) = 1, so the climb still spans 3.2/14 T.
+  User chose 2026-10-25 to offer all three shapes.
+Tests: rows peak bottom to top; rows start evenly staggered with no whip; all rows are dark during the gap; rows 0, 3, 6 match wave.ino
+output at T = 1.4 s at the defaults; the climb matches each shape's formula and is monotonic; accelerate/decelerate shrink/grow the stagger
+up the column, fast middle shrinks it in the middle; about thickness/8 rows are lit at once.
 
 ### 3.5 Lighthouse (Phase 4)
-One soft beam rotates with a speed "whip" and an optional brightness "flash" when it passes the front.
-Warped angle (in revolutions): `θ = φ + (k / 2π) · sin 2πφ`, with k = `whip` ∈ [0, 0.9].
-Then dθ/dφ = 1 + k·cos 2πφ. The beam is fastest when passing the front (θ = 0) and slowest on the far side. θ is monotonic for k < 1, and the period stays exact.
-Beam centre: `x = (18θ + front) mod 18`. Width W = `width` columns:
+n soft beams (param `beams`, 1–4, default 1; added 2026-10-25), evenly spaced and rotating together, with a speed "whip" and an optional
+brightness "flash" each time a beam passes the front.
+Warped angle of beam 0 (in revolutions): `θ = φ + (k / 2πn) · sin 2πnφ`, with k = `whip` ∈ [0, 0.9]; beam i is at `θ + i/n`.
+Then dθ/dφ = 1 + k·cos 2πnφ: the warp repeats every 1/n turn, so every beam is fastest when passing the front and slowest halfway between
+(user chose 2026-10-25: "every beam at the front"). θ is monotonic for k < 1, and the period (one revolution) stays exact. n = 1 is the original.
+Beam centre: `xᵢ = (18(θ + i/n) + front) mod 18`. Width W = `width` columns:
 `f(d) = (1 + cos(π d / (W/2))) / 2` for |d| < W/2 (circular distance), else 0.
-Flash, with s = `flash` ∈ [0,1]: `m = (1 − s) + s · ((1 + cos 2πθ)/2)³`. Full brightness at the front, `1 − s` at the far side.
-`I(c) = f(d(c)) · m`. All rows are identical.
+Flash, with s = `flash` ∈ [0,1], per beam: `mᵢ = (1 − s) + s · ((1 + cos 2π(θ + i/n))/2)³`. Full brightness at the front, `1 − s` at the far side.
+`I(c) = maxᵢ f(dᵢ(c)) · mᵢ`. All rows are identical.
 Period 10 s → 2 s.
-Tests: monotonic θ; at k=0 the speed is constant; with s=0, m≡1; the peak brightness is at the front column when s>0.
+Tests: monotonic θ for every n; at k=0 the speed is constant; the speed peaks (1 + k) at each beam pass; beams sit 18/n columns apart;
+with s=0, m≡1; the peak brightness is at the front column when s>0; with n beams the front flashes n times a turn.
 Implementation (Phase 4): θ and m use `sinSmooth` (`trig.h`, a corrected parabola, error < 0.1%, exact at 0 and ±1) rather
 than `sin16`. `sin16`'s slope jumps at its table sections made θ step back slightly at k = 0.9, and its peak is 0.4% low,
 so the flash never reached full. Both are evaluated once per frame; the beam profile uses `cos16` per column.
@@ -222,16 +259,17 @@ While the firmware is waiting for a line, a repeated wake byte gets another `!` 
 **Commands** (ASCII, decimal ints, colours as 6 hex digits, max 72 bytes per line):
 ```
 H                                  hello → "OK lightbox <protoVersion>"
-P <style> <r> <b> <c0> <c1> <a0> <a1> <a2> <a3>   atomic preset load: sets style, live rate/brightness, colours, params; resets effect state; turns LFO OFF
+P <style> <r> <b> <c0> <c1> <a0> <a1> <a2> <a3> <a4>   atomic preset load: sets style, live rate/brightness, colours, params; resets effect state; turns LFO OFF
 R <r>                              live rate
 B <b>                              live brightness
 G <g>                              global brightness
 C <slot> <rrggbb>                  one colour
 A <idx> <value>                    one algorithm param (wire units, clamped to styles.json range)
 L <on 0|1> <target 0=rate|1=bright> <mHz 10–5000> <depth 0–1000>   LFO (Phase 6)
-?                                  dump → "S <style> <r> <b> <g> <c0> <c1> <a0..a3> <lfoOn> <lfoT> <mHz> <depth> <fps>"
+?                                  dump → "S <style> <r> <b> <g> <c0> <c1> <a0..a4> <lfoOn> <lfoT> <mHz> <depth> <fps>"
 ```
-Unused colour/param slots are sent as `000000` / `0`. Error codes: 1 checksum, 2 unknown command, 3 bad arguments, 4 line too long.
+Unused colour/param slots are sent as `000000` / `0`. Protocol version 2 (2026-10-25): five param slots (was four, version 1), so an old
+host and new firmware refuse each other at the hello. Error codes: 1 checksum, 2 unknown command, 3 bad arguments, 4 line too long.
 
 **Parsing rules (Phase 2):**
 - Checked in order: too long (4) → checksum (1; hex digits in either case) → command letter (2; exactly one uppercase letter or `?`, then a space or the end) → arguments (3).
@@ -290,7 +328,8 @@ Use `?` after connecting to verify the firmware state matches the UI.
 - Shortcuts are ignored while focus is in a text input. `1`–`9` select the preset at that list position. Arrows (Phase 5): ↑/↓ change brightness ±0.05, ←/→ change rate ±0.05, and holding Shift changes them by ±0.01.
 - Export downloads `lightbox-presets-YYYYMMDD.json` = `{ app: "lightbox", version: 1, exportedAt, presets }`.
   Import validates the file and then asks Merge or Replace. Merge appends imported presets with new ids; Replace asks for confirmation.
-- Style sliders show "slow…fast" and "dark…bright" labels. Algorithm params render from `styles.json` (slider, value shown as wire × scale + unit).
+- Style sliders show "slow…fast" and "dark…bright" labels. Algorithm params render from `styles.json` (slider, value shown as wire × scale + unit,
+  `%` without a space), or a dropdown when the param has `options`. Stored presets made before a param existed get its default on load.
 
 **Layout (dark theme, big hit targets).** It follows the sketch `docs/UI design.png`. A slim top bar holds the connection pill (and the disconnect banner below it), the blackout button and indicator, and Export / Import.
 Below it, columns from left to right (the editor and Current share the second one):
@@ -382,8 +421,17 @@ climb span with finer steps (§3.4). Alarm lines are now exactly 9 apart; Lighth
    opposite each other, Pulse climbing smoothly through 7 rows, Two-tone random across all 126, Lighthouse beam width and front column.
    **Calibrated 2026-10-25:** rainbow order bottom to top, LED 0s line up, all tails the same direction, 18 wrap once → identity `layout.h`.
 
+### Algorithm options (2026-10-25)
+Per-style options, asked for by the user: Ominous minimum brightness (§3.1), Alarm line count up to 6 (§3.2), Two-tone colour ratio (§3.3),
+Pulse thickness and whip with a shape dropdown (§3.4, the whip is new), Lighthouse beam count up to 4 (§3.5). Decisions (user, 2026-10-25):
+Pulse thickness = band height in rows; all three whip shapes as a dropdown; Two-tone ratio = time share with a hold; Lighthouse whips and
+flashes every beam at the front. Protocol version 2 (five param slots). Defaults reproduce the previous behaviour exactly.
+**Gate:** in the editor, for each style: Ominous Minimum 0 → 100% (0 breathes from black, 100 is steady); Alarm Beams 1–6 (4 and 5 have
+uneven 4/5 and 3/4 gaps), with a tail; Two-tone Colour 1 share 0/25/50/75/100%; Pulse Thickness 1 → 20 rows, Whip 0 → 0.9 with each
+shape; Lighthouse Beams 1–4 with whip and flash. Saved presets from before keep looking the same.
+
 ## 8. Risks & notes for agents
-- **RAM:** 2 KB total; 1,517 B (74.1%) at 7 × 18. FastLED frame 378 B (render directly into `leds[]` through the layout map; there is no room for a second buffer) + 7 FastLED controllers ≈ 43 B each (object + vtable, which AVR keeps in RAM) + Two-tone 378 B + `Serial` with 16 B RX/TX buffers (`-DSERIAL_*_BUFFER_SIZE` in `[main]`, saves 96 B; the handshake reads each line in a tight loop) + line buffer 72 B. Don't use `String` or dynamic allocation in firmware. Keep string literals in `F()`/PROGMEM.
+- **RAM:** 2 KB total; 1,525 B (74.5%) at 7 × 18 with five param slots (1,517 B, 74.1%, before). FastLED frame 378 B (render directly into `leds[]` through the layout map; there is no room for a second buffer) + 7 FastLED controllers ≈ 43 B each (object + vtable, which AVR keeps in RAM) + Two-tone 378 B + `Serial` with 16 B RX/TX buffers (`-DSERIAL_*_BUFFER_SIZE` in `[main]`, saves 96 B; the handshake reads each line in a tight loop) + line buffer 72 B. Don't use `String` or dynamic allocation in firmware. Keep string literals in `F()`/PROGMEM.
 - **Floats on AVR** are slow. Use them only on parameter change, never per pixel per frame.
 - **Old vs new bootloader:** if uploading with `nanoatmega328new` fails, try `nanoatmega328`. Record which one works in `CLAUDE.md`.
 - **Dithering at low brightness with black backgrounds:** tails and fades may show 8-bit stepping. If the user reports it at a gate, options are FastLED dithering tweaks or a per-style floor. Ask the user; don't decide alone.

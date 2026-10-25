@@ -81,7 +81,7 @@ test('builds presets and switches between them live', async ({ page }) => {
   await editor(page).getByLabel('Colour 1').fill('#ff8800')
   await expect.poll(() => fakeState(page)).toMatchObject({ colors: ['#FF8800', '#000000'] })
   await editor(page).getByLabel('Tail').fill('4')
-  await expect.poll(() => fakeState(page)).toMatchObject({ params: [4, 0, 0, 0] })
+  await expect.poll(() => fakeState(page)).toMatchObject({ params: [4, 2, 0, 0, 0] })
   await editor(page).getByRole('button', { name: 'Save' }).click()
   await expect(editor(page)).toHaveCount(0)
   await expect(rows(page)).toHaveText([/Ominous Glow/, /Alarm/, ...PHASE4_ROWS, /Slow red/])
@@ -91,7 +91,7 @@ test('builds presets and switches between them live', async ({ page }) => {
   await expect.poll(() => fakeState(page)).toMatchObject({ style: 0 })
   await blur(page)
   await page.keyboard.press('6')
-  await expect.poll(() => fakeState(page)).toMatchObject({ style: 1, colors: ['#FF8800', '#000000'], params: [4, 0, 0, 0] })
+  await expect.poll(() => fakeState(page)).toMatchObject({ style: 1, colors: ['#FF8800', '#000000'], params: [4, 2, 0, 0, 0] })
 
   await page.reload()
   await expect(rows(page)).toHaveText([/Ominous Glow/, /Alarm/, ...PHASE4_ROWS, /Slow red/])
@@ -159,7 +159,22 @@ test('the Phase 4 styles load from their seeded presets', async ({ page }) => {
   await expect.poll(() => fakeState(page)).toMatchObject({ style: 3, colors: ['#9966CC', '#000000'] })
   await page.getByRole('button', { name: 'Edit Lighthouse' }).click()
   await editor(page).getByLabel('Front column').fill('9')
-  await expect.poll(() => fakeState(page)).toMatchObject({ style: 4, params: [60, 50, 5, 9] })
+  await expect.poll(() => fakeState(page)).toMatchObject({ style: 4, params: [60, 50, 5, 9, 1] })
+})
+
+test('style options reach the board: sliders and the whip shape dropdown', async ({ page }) => {
+  await connect(page)
+  await page.getByRole('button', { name: 'Edit Ominous Glow' }).click()
+  await editor(page).getByLabel('Minimum').fill('35')
+  await expect.poll(() => fakeState(page)).toMatchObject({ style: 0, params: [35, 0, 0, 0, 0] })
+  await editor(page).getByLabel('Style').selectOption('pulse')
+  await editor(page).getByLabel('Thickness').fill('24')
+  await editor(page).getByLabel('Whip', { exact: true }).fill('70')
+  await editor(page).getByLabel('Whip shape').selectOption('Fast middle')
+  await expect.poll(() => fakeState(page)).toMatchObject({ style: 3, params: [24, 70, 1, 0, 0] })
+  await editor(page).getByLabel('Style').selectOption('lighthouse')
+  await editor(page).getByLabel('Beams').fill('3')
+  await expect.poll(() => fakeState(page)).toMatchObject({ style: 4, params: [60, 50, 5, 0, 3] })
 })
 
 test('drag to reorder; numbers follow the order', async ({ page }) => {

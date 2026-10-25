@@ -140,7 +140,7 @@ static void test_preset_load_turns_it_off() {
   send(e, "L 1 0 1000 500*79");
   e.tick(250000);
   TEST_ASSERT_TRUE(e.lfo().on());
-  send(e, "P 1 250 900 00FF00 000000 6 0 0 0*49");
+  send(e, "P 1 250 900 00FF00 000000 6 2 0 0 0*5B");
   TEST_ASSERT_FALSE(e.lfo().on());
   RateMap m;
   StyleDef d = styleDef(STYLE_ALARM);

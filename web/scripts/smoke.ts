@@ -2,10 +2,11 @@
 // Uses the app's own Link (wake/CTS, retries) and predicts every `?` dump with the DeviceModel.
 import { Duplex } from 'node:stream'
 import { SerialPort } from 'serialport'
-import { encode, LFO_MHZ_MAX, LFO_MHZ_MIN, type Command } from '../src/protocol/commands'
+import { encode, LFO_MHZ_MAX, LFO_MHZ_MIN, PROTOCOL_VERSION, type Command } from '../src/protocol/commands'
 import { bootState, DeviceModel, dumpLine } from '../src/protocol/device'
 import { Link } from '../src/serial/link'
 import { STYLES } from '../src/styles/registry'
+import type { StyleSpec } from '../src/styles/types'
 import { PORT_PATH, sleep } from './node-serial'
 
 const COMMANDS = Number(process.env.SMOKE_COMMANDS ?? 1000)
@@ -28,7 +29,7 @@ async function connect(): Promise<{ port: SerialPort; link: Link }> {
   const deadline = Date.now() + 5000
   for (;;) {
     const reply = await link.exchangeOnce(encode({ type: 'H' })).catch(() => null)
-    if (reply === 'OK lightbox 1') break
+    if (reply === `OK lightbox ${PROTOCOL_VERSION}`) break
     check(Date.now() < deadline, `no hello within 5 s (last reply: ${reply})`)
   }
   return { port, link }
@@ -69,6 +70,12 @@ function randomCommand(style: number): Command {
   }
 }
 
+/** The most expensive params to render: every param at its maximum (most and widest beams, longest tail),
+ * except Two-tone's ratio, whose maximum is a solid colour; 75% runs the hold-and-swing path. */
+function heaviest(s: StyleSpec): number[] {
+  return s.params.map((p) => (s.key === 'twotone' && p.key === 'ratio' ? 75 : p.wireMax))
+}
+
 async function main(): Promise<void> {
   const conn = await connect()
   const { link } = conn
@@ -94,9 +101,9 @@ async function main(): Promise<void> {
   check(bad === 'ERR 1', `bad checksum replied "${bad}"`)
   console.log('smoke: bad checksum → ERR 1')
 
-  // Every style at full rate and its defaults, then with the fastest full-depth LFO sweeping its rate
-  // (the LFO's per-frame cost on top of the effect's). Idle for two seconds first so the fps sample isn't
-  // dragged down by command traffic.
+  // Every style at full rate and its defaults, then at its heaviest params with the fastest full-depth LFO
+  // sweeping its rate (the LFO's per-frame cost on top of the effect's). Idle for two seconds first so the
+  // fps sample isn't dragged down by command traffic.
   const rates: string[] = []
   const lfoRates: string[] = []
   for (const s of STYLES) {
@@ -107,7 +114,7 @@ async function main(): Promise<void> {
     check(d.fps >= MIN_FPS, `${s.name} at full rate runs ${d.fps} fps, below ${MIN_FPS}`)
     rates.push(`${s.name} ${d.fps}`)
 
-    await link.exchange(encode({ type: 'R', rate: 500 }))
+    await link.exchange(encode({ type: 'P', style: s.id, rate: 500, brightness: 1000, colors: s.defaultColors, params: heaviest(s) }))
     await link.exchange(encode({ type: 'L', on: 1, target: 0, mHz: LFO_MHZ_MAX, depth: 1000 }))
     await sleep(2100)
     d = await dump(link)
@@ -116,7 +123,7 @@ async function main(): Promise<void> {
     lfoRates.push(`${s.name} ${d.fps}`)
   }
   console.log(`smoke: fps at full rate: ${rates.join(', ')}`)
-  console.log(`smoke: fps with a 5 Hz full-depth LFO on rate: ${lfoRates.join(', ')}`)
+  console.log(`smoke: fps at the heaviest params with a 5 Hz full-depth LFO on rate: ${lfoRates.join(', ')}`)
 
   // A preset load turns the LFO off.
   await link.exchange(encode({ type: 'P', style: 0, rate: 500, brightness: 800, colors: ['#9966CC'], params: [] }))

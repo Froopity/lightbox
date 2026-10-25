@@ -32,7 +32,9 @@ static void test_param_clamped_to_style_range() {
   e.loadStyle(STYLE_ALARM);
   e.setParam(0, 99);
   TEST_ASSERT_EQUAL_UINT16(16, e.param(0));
-  e.setParam(3, 5);  // Alarm has one param
+  e.setParam(1, 0);
+  TEST_ASSERT_EQUAL_UINT16(1, e.param(1));  // at least one line
+  e.setParam(3, 5);  // Alarm has two params
   TEST_ASSERT_EQUAL_UINT16(0, e.param(3));
 }
 
@@ -70,7 +72,8 @@ static void test_render_dispatches_new_styles() {
   Engine e;
   e.loadStyle(STYLE_PULSE);
   e.render(t.f);  // phase 0: row 0 just starting its swell, rows above still dark
-  TEST_ASSERT_EQUAL_UINT8(scale8(0x66, pulse::intensity(0, 0)), t.f.get(0, 3).g);
+  TEST_ASSERT_EQUAL_UINT16(87, e.param(0));
+  TEST_ASSERT_EQUAL_UINT8(scale8(0x66, pulse::intensity(0, 0, pulse::Params{87, 0, 0})), t.f.get(0, 3).g);
   TEST_ASSERT_TRUE(t.f.get(0, 3).g > 0);
   TEST_ASSERT_EQUAL_UINT8(0, t.f.get(1, 3).g);
 
@@ -81,6 +84,9 @@ static void test_render_dispatches_new_styles() {
   TEST_ASSERT_EQUAL_HEX32(0xFFD8A0, e.color(0));
   TEST_ASSERT_EQUAL_UINT8(0xFF, t.f.get(1, 0).r);
   TEST_ASSERT_EQUAL_UINT8(0, t.f.get(1, 8).r);
+  e.setParam(4, 2);  // a second beam, half a turn on
+  e.render(t.f);
+  TEST_ASSERT_TRUE(t.f.get(1, COLS / 2).r > 0);
 
   e.loadStyle(STYLE_TWOTONE);
   e.render(t.f);

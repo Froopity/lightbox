@@ -10,7 +10,9 @@
       "bMin": 4,
       "bMax": 255,
       "defaultColors": ["#9966CC"],
-      "params": []
+      "params": [
+        { "key": "floor", "label": "Minimum", "wireMin": 0, "wireMax": 100, "default": 10, "scale": 1, "unit": "%" }
+      ]
     },
     {
       "id": 1,
@@ -22,7 +24,10 @@
       "bMin": 4,
       "bMax": 255,
       "defaultColors": ["#FF0000"],
-      "params": [{ "key": "tail", "label": "Tail", "wireMin": 0, "wireMax": 16, "default": 0, "scale": 0.5, "unit": "cols" }]
+      "params": [
+        { "key": "tail", "label": "Tail", "wireMin": 0, "wireMax": 16, "default": 0, "scale": 0.5, "unit": "cols" },
+        { "key": "beams", "label": "Beams", "wireMin": 1, "wireMax": 6, "default": 2, "scale": 1 }
+      ]
     },
     {
       "id": 2,
@@ -34,7 +39,9 @@
       "bMin": 4,
       "bMax": 255,
       "defaultColors": ["#FF4000", "#8000FF"],
-      "params": []
+      "params": [
+        { "key": "ratio", "label": "Colour 1 share", "wireMin": 0, "wireMax": 100, "default": 50, "scale": 1, "unit": "%" }
+      ]
     },
     {
       "id": 3,
@@ -46,7 +53,11 @@
       "bMin": 4,
       "bMax": 255,
       "defaultColors": ["#9966CC"],
-      "params": []
+      "params": [
+        { "key": "thickness", "label": "Thickness", "wireMin": 8, "wireMax": 160, "default": 87, "scale": 0.125, "unit": "rows" },
+        { "key": "whip", "label": "Whip", "wireMin": 0, "wireMax": 90, "default": 0, "scale": 0.01 },
+        { "key": "shape", "label": "Whip shape", "wireMin": 0, "wireMax": 2, "default": 0, "scale": 1, "options": ["Accelerate", "Fast middle", "Decelerate"] }
+      ]
     },
     {
       "id": 4,
@@ -62,7 +73,8 @@
         { "key": "whip", "label": "Whip", "wireMin": 0, "wireMax": 90, "default": 60, "scale": 0.01 },
         { "key": "flash", "label": "Flash", "wireMin": 0, "wireMax": 100, "default": 50, "scale": 0.01 },
         { "key": "width", "label": "Width", "wireMin": 2, "wireMax": 9, "default": 5, "scale": 1, "unit": "cols" },
-        { "key": "front", "label": "Front column", "wireMin": 0, "wireMax": 17, "default": 0, "scale": 1 }
+        { "key": "front", "label": "Front column", "wireMin": 0, "wireMax": 17, "default": 0, "scale": 1 },
+        { "key": "beams", "label": "Beams", "wireMin": 1, "wireMax": 4, "default": 1, "scale": 1 }
       ]
     }
   ]

@@ -12,10 +12,11 @@ const editor = useEditorStore()
 const { draft, isNew, dirty } = storeToRefs(editor)
 const style = computed(() => (draft.value ? styleByKey(draft.value.style) : undefined))
 
-/** wire × scale + unit, e.g. "2.5 cols". */
+/** wire × scale + unit, e.g. "2.5 cols" or "10%". */
 function paramText(p: ParamSpec, wire: number): string {
   const v = Number((wire * p.scale).toFixed(2))
-  return p.unit ? `${v} ${p.unit}` : String(v)
+  if (!p.unit) return String(v)
+  return p.unit === '%' ? `${v}%` : `${v} ${p.unit}`
 }
 
 const value = (e: Event): string => (e.target as HTMLInputElement | HTMLSelectElement).value
@@ -97,17 +98,37 @@ const value = (e: Event): string => (e.target as HTMLInputElement | HTMLSelectEl
       :model-value="draft.brightness"
       @update:model-value="editor.setBrightness"
     />
-    <SliderField
+    <template
       v-for="p in style.params"
       :key="p.key"
-      :label="p.label"
-      :min="p.wireMin"
-      :max="p.wireMax"
-      :step="1"
-      :value-text="paramText(p, draft.params[p.key] ?? p.default)"
-      :model-value="draft.params[p.key] ?? p.default"
-      @update:model-value="editor.setParam(p.key, $event)"
-    />
+    >
+      <label
+        v-if="p.options"
+        class="field"
+      >
+        <span>{{ p.label }}</span>
+        <select
+          :value="draft.params[p.key] ?? p.default"
+          @change="editor.setParam(p.key, Number(value($event)))"
+        >
+          <option
+            v-for="(o, i) in p.options"
+            :key="o"
+            :value="p.wireMin + i"
+          >{{ o }}</option>
+        </select>
+      </label>
+      <SliderField
+        v-else
+        :label="p.label"
+        :min="p.wireMin"
+        :max="p.wireMax"
+        :step="1"
+        :value-text="paramText(p, draft.params[p.key] ?? p.default)"
+        :model-value="draft.params[p.key] ?? p.default"
+        @update:model-value="editor.setParam(p.key, $event)"
+      />
+    </template>
 
     <div class="footer">
       <button

@@ -116,6 +116,66 @@ static void test_mix_endpoints() {
   TEST_ASSERT_EQUAL_UINT8(255, twotone::State::mix(32768));
 }
 
+static void test_share_at_half_is_unchanged() {
+  twotone::Share s(50);
+  for (uint32_t p = 0; p < 65536; p++) TEST_ASSERT_EQUAL_UINT16(p, s.warp((uint16_t)p));
+}
+
+static void test_share_ends_are_solid_colours() {
+  twotone::Share c(100), c2(0);
+  for (uint32_t p = 0; p < 65536; p += 7) {
+    TEST_ASSERT_EQUAL_UINT8(0, twotone::State::mix(c.warp((uint16_t)p)));
+    TEST_ASSERT_EQUAL_UINT8(255, twotone::State::mix(c2.warp((uint16_t)p)));
+  }
+}
+
+static void test_share_is_c_time_fraction() {
+  // C's mean share over a cycle, 1 − mix/255, equals the ratio.
+  for (uint8_t ratio = 0; ratio <= 100; ratio += 5) {
+    twotone::Share s(ratio);
+    double c = 0;
+    for (uint32_t p = 0; p < 65536; p++) c += 1 - twotone::State::mix(s.warp((uint16_t)p)) / 255.0;
+    TEST_ASSERT_INT_WITHIN(5, ratio * 10, (int)lround(c / 65.536));  // per mille
+  }
+}
+
+static void test_share_continuous_and_at_c_on_the_wrap() {
+  // No jumps (so a held LED glides into its swing), and every LED is at C when its phase wraps (re-rolls stay invisible).
+  for (uint8_t ratio = 1; ratio < 100; ratio++) {
+    twotone::Share s(ratio);
+    TEST_ASSERT_EQUAL_UINT8(0, twotone::State::mix(s.warp(0)));
+    TEST_ASSERT_TRUE(twotone::State::mix(s.warp(65535)) <= 1);
+    int prev = twotone::State::mix(s.warp(0));
+    for (uint32_t p = 1; p < 65536; p++) {
+      int cur = twotone::State::mix(s.warp((uint16_t)p));
+      TEST_ASSERT_INT_WITHIN(2, prev, cur);
+      prev = cur;
+    }
+  }
+}
+
+static void test_share_holds_the_favoured_colour() {
+  // 75 %: holds at C for half the cycle, from the wrap. 25 %: holds at C2 for half the cycle, centred.
+  twotone::Share c(75), c2(25);
+  TEST_ASSERT_EQUAL_UINT16(0, c.warp(32767));
+  TEST_ASSERT_TRUE(c.warp(32768 + 1000) > 0);
+  TEST_ASSERT_EQUAL_UINT16(32768, c2.warp(16384));
+  TEST_ASSERT_EQUAL_UINT16(32768, c2.warp(49151));
+  TEST_ASSERT_TRUE(c2.warp(16000) < 32768);
+  TEST_ASSERT_TRUE(c2.warp(50000) > 32768);
+}
+
+static void test_render_applies_the_ratio() {
+  Engine e = started(500);
+  e.setParam(0, 80);
+  TestFrame t;
+  e.tick(123000);
+  e.render(t.f);
+  twotone::Share s(80);
+  for (uint8_t i = 0; i < PIXELS; i++)
+    TEST_ASSERT_EQUAL_UINT8(blend(C, C2, twotone::State::mix(s.warp(e.twotone().phase(i)))).r, t.px[i].r);
+}
+
 static void test_huge_frame_gap_is_clamped() {
   Engine e = started(1000);
   e.tick(60000000);  // a minute in one frame: no overflow, still in bounds
@@ -133,6 +193,12 @@ int main() {
   RUN_TEST(test_continuous_across_wraps);
   RUN_TEST(test_colour_stays_on_the_c_c2_line);
   RUN_TEST(test_mix_endpoints);
+  RUN_TEST(test_share_at_half_is_unchanged);
+  RUN_TEST(test_share_ends_are_solid_colours);
+  RUN_TEST(test_share_is_c_time_fraction);
+  RUN_TEST(test_share_continuous_and_at_c_on_the_wrap);
+  RUN_TEST(test_share_holds_the_favoured_colour);
+  RUN_TEST(test_render_applies_the_ratio);
   RUN_TEST(test_huge_frame_gap_is_clamped);
   return UNITY_END();
 }

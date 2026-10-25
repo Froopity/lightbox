@@ -1,5 +1,6 @@
 // Two-tone Glow (PLAN.md §3.3): every LED drifts between C and C2 on its own period, base·m with m
-// re-rolled in [0.5, 1.5] each time the LED is back at C, so the LEDs never fall into step.
+// re-rolled in [0.5, 1.5] each time the LED is back at C, so the LEDs never fall into step. The ratio param
+// sets C's share of the time: each LED holds at the favoured colour for part of its cycle (§3.3).
 #pragma once
 #include <stdint.h>
 
@@ -8,6 +9,23 @@
 namespace core {
 namespace twotone {
 
+// Maps an LED's phase to the blend phase for a ratio ρ (C's time share, 0..100 %). Above 50 % the LED holds at
+// C (blend phase 0) for 2ρ − 1 of its cycle, from the wrap; below, it holds at C2 (half a turn) for 1 − 2ρ,
+// centred on half a turn. The full C → C2 → C swing fills the rest, so C's mean share is exactly ρ.
+class Share {
+ public:
+  explicit Share(uint8_t ratio);
+  uint16_t warp(uint16_t phase) const;
+
+  bool identity() const { return hold_ == 0; }
+
+ private:
+  uint32_t hold_;    // hold length, uint16 turns (0..65536)
+  uint32_t first_;   // ρ < 50: the swing before the hold; ρ ≥ 50: the hold
+  uint16_t scale_;   // ⌊2^24 / swing length⌋ (Q8): swing phase · scale_ >> 8 is the blend phase
+  bool holdC_;       // hold at C (ρ ≥ 50) or at C2
+};
+
 // The only effect with per-LED state: 126 × 3 B.
 class State {
  public:
@@ -15,7 +33,7 @@ class State {
   void reset();
   // dBase: progress of the base period this frame, 2^24 = one base cycle (clamped to one cycle).
   void advance(uint32_t dBase);
-  void render(Frame& f, Rgb c, Rgb c2) const;
+  void render(Frame& f, Rgb c, Rgb c2, uint8_t ratio) const;
 
   // Phase of LED i (row·COLS + col) as uint16 turns.
   uint16_t phase(uint8_t i) const { return phase_[i]; }

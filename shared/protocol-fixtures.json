@@ -10,6 +10,7 @@
       "#000000"
     ],
     "params": [
+      10,
       0,
       0,
       0,
@@ -29,7 +30,7 @@
         "type": "H"
       },
       "line": "H*48",
-      "expectReply": "OK lightbox 1"
+      "expectReply": "OK lightbox 2"
     },
     {
       "name": "dump at boot (fps 0 in tests)",
@@ -37,7 +38,7 @@
         "type": "?"
       },
       "line": "?*3F",
-      "expectReply": "S 0 500 800 1000 9966CC 000000 0 0 0 0 0 0 0 0 0",
+      "expectReply": "S 0 500 800 1000 9966CC 000000 10 0 0 0 0 0 0 0 0 0",
       "expectState": {
         "style": 0,
         "rate": 500,
@@ -48,6 +49,7 @@
           "#000000"
         ],
         "params": [
+          10,
           0,
           0,
           0,
@@ -74,12 +76,13 @@
         ],
         "params": [
           6,
+          2,
           0,
           0,
           0
         ]
       },
-      "line": "P 1 250 900 00FF00 000000 6 0 0 0*49",
+      "line": "P 1 250 900 00FF00 000000 6 2 0 0 0*5B",
       "expectReply": "OK",
       "expectState": {
         "style": 1,
@@ -92,6 +95,7 @@
         ],
         "params": [
           6,
+          2,
           0,
           0,
           0
@@ -101,21 +105,21 @@
     {
       "name": "dump after preset and global",
       "before": [
-        "P 1 250 900 00FF00 000000 6 0 0 0*49",
+        "P 1 250 900 00FF00 000000 6 2 0 0 0*5B",
         "G 300*54"
       ],
       "cmd": {
         "type": "?"
       },
       "line": "?*3F",
-      "expectReply": "S 1 250 900 300 00FF00 000000 6 0 0 0 0 0 0 0 0"
+      "expectReply": "S 1 250 900 300 00FF00 000000 6 2 0 0 0 0 0 0 0 0"
     },
     {
       "name": "preset keeps global",
       "before": [
         "G 120*54"
       ],
-      "line": "P 1 250 900 00FF00 000000 6 0 0 0*49",
+      "line": "P 1 250 900 00FF00 000000 6 2 0 0 0*5B",
       "expectReply": "OK",
       "expectState": {
         "global": 120
@@ -123,11 +127,12 @@
     },
     {
       "name": "preset clamps params to the style range",
-      "line": "P 1 0 1000 FF0000 000000 99 0 0 0*40",
+      "line": "P 1 0 1000 FF0000 000000 99 0 0 0 0*50",
       "expectReply": "OK",
       "expectState": {
         "params": [
           16,
+          1,
           0,
           0,
           0
@@ -136,7 +141,7 @@
     },
     {
       "name": "preset ignores params the style lacks",
-      "line": "P 0 1000 0 9966CC 112233 5 7 8 9*72",
+      "line": "P 0 1000 0 9966CC 112233 5 7 8 9 6*64",
       "expectReply": "OK",
       "expectState": {
         "style": 0,
@@ -147,6 +152,7 @@
           "#112233"
         ],
         "params": [
+          5,
           0,
           0,
           0,
@@ -157,14 +163,15 @@
     {
       "name": "preset replaces params set earlier",
       "before": [
-        "P 1 250 900 00FF00 000000 6 0 0 0*49",
+        "P 1 250 900 00FF00 000000 6 2 0 0 0*5B",
         "A 0 12*72"
       ],
-      "line": "P 1 250 900 00FF00 000000 6 0 0 0*49",
+      "line": "P 1 250 900 00FF00 000000 6 2 0 0 0*5B",
       "expectReply": "OK",
       "expectState": {
         "params": [
           6,
+          2,
           0,
           0,
           0
@@ -182,9 +189,15 @@
           "#FF4000",
           "#8000FF"
         ],
-        "params": []
+        "params": [
+          30,
+          0,
+          0,
+          0,
+          0
+        ]
       },
-      "line": "P 2 300 700 FF4000 8000FF 0 0 0 0*4A",
+      "line": "P 2 300 700 FF4000 8000FF 30 0 0 0 0*69",
       "expectReply": "OK",
       "expectState": {
         "style": 2,
@@ -195,6 +208,7 @@
           "#8000FF"
         ],
         "params": [
+          30,
           0,
           0,
           0,
@@ -203,7 +217,7 @@
       }
     },
     {
-      "name": "preset loads lighthouse with all four params",
+      "name": "preset loads lighthouse with all five params",
       "cmd": {
         "type": "P",
         "style": 4,
@@ -216,10 +230,11 @@
           60,
           50,
           5,
+          3,
           3
         ]
       },
-      "line": "P 4 500 800 FFD8A0 000000 60 50 5 3*41",
+      "line": "P 4 500 800 FFD8A0 000000 60 50 5 3 3*52",
       "expectReply": "OK",
       "expectState": {
         "style": 4,
@@ -227,13 +242,14 @@
           60,
           50,
           5,
+          3,
           3
         ]
       }
     },
     {
       "name": "preset clamps each lighthouse param to its range",
-      "line": "P 4 500 800 FFD8A0 000000 95 101 1 18*40",
+      "line": "P 4 500 800 FFD8A0 000000 95 101 1 18 9*59",
       "expectReply": "OK",
       "expectState": {
         "style": 4,
@@ -241,14 +257,15 @@
           90,
           100,
           2,
-          17
+          17,
+          4
         ]
       }
     },
     {
       "name": "lighthouse param 3 (front)",
       "before": [
-        "P 4 500 800 FFD8A0 000000 60 50 5 0*42"
+        "P 4 500 800 FFD8A0 000000 60 50 5 0 1*53"
       ],
       "cmd": {
         "type": "A",
@@ -262,21 +279,22 @@
           60,
           50,
           5,
-          12
+          12,
+          1
         ]
       }
     },
     {
-      "name": "param on vertical pulse (no params)",
+      "name": "param vertical pulse lacks",
       "before": [
-        "P 3 500 800 9966CC 000000 0 0 0 0*4E"
+        "P 3 500 800 9966CC 000000 87 0 0 0 0*61"
       ],
-      "line": "A 0 1*40",
+      "line": "A 3 1*43",
       "expectError": 3
     },
     {
       "name": "preset accepts lowercase hex",
-      "line": "P 1 1 2 abcdef 0a0b0c 0 0 0 0*15",
+      "line": "P 1 1 2 abcdef 0a0b0c 0 2 0 0 0*07",
       "expectReply": "OK",
       "expectState": {
         "colors": [
@@ -287,17 +305,17 @@
     },
     {
       "name": "preset with unknown style",
-      "line": "P 5 500 500 FF0000 000000 0 0 0 0*45",
+      "line": "P 5 500 500 FF0000 000000 0 0 0 0 0*55",
       "expectError": 3
     },
     {
       "name": "preset with rate out of range",
-      "line": "P 0 1001 500 FF0000 000000 0 0 0 0*75",
+      "line": "P 0 1001 500 FF0000 000000 10 0 0 0 0*54",
       "expectError": 3
     },
     {
       "name": "preset with too few args",
-      "line": "P 0 500 500 FF0000 000000 0 0 0*50",
+      "line": "P 0 500 500 FF0000 000000 10 0 0 0*71",
       "expectError": 3
     },
     {
@@ -480,7 +498,7 @@
     {
       "name": "param",
       "before": [
-        "P 1 250 900 00FF00 000000 6 0 0 0*49"
+        "P 1 250 900 00FF00 000000 6 2 0 0 0*5B"
       ],
       "cmd": {
         "type": "A",
@@ -492,6 +510,7 @@
       "expectState": {
         "params": [
           3,
+          2,
           0,
           0,
           0
@@ -501,13 +520,14 @@
     {
       "name": "param clamped",
       "before": [
-        "P 1 250 900 00FF00 000000 6 0 0 0*49"
+        "P 1 250 900 00FF00 000000 6 2 0 0 0*5B"
       ],
       "line": "A 0 99*71",
       "expectReply": "OK",
       "expectState": {
         "params": [
           16,
+          2,
           0,
           0,
           0
@@ -515,17 +535,247 @@
       }
     },
     {
-      "name": "param the style lacks",
+      "name": "param the style lacks (alarm has two)",
       "before": [
-        "P 1 250 900 00FF00 000000 6 0 0 0*49"
+        "P 1 250 900 00FF00 000000 6 2 0 0 0*5B"
       ],
-      "line": "A 1 3*43",
+      "line": "A 2 3*40",
       "expectError": 3
     },
     {
-      "name": "param on a style without params",
-      "line": "A 0 1*40",
+      "name": "param the boot style lacks",
+      "line": "A 1 1*41",
       "expectError": 3
+    },
+    {
+      "name": "ominous floor (param 0)",
+      "cmd": {
+        "type": "A",
+        "idx": 0,
+        "value": 40
+      },
+      "line": "A 0 40*75",
+      "expectReply": "OK",
+      "expectState": {
+        "style": 0,
+        "params": [
+          40,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "ominous floor clamped to 100",
+      "line": "A 0 101*41",
+      "expectReply": "OK",
+      "expectState": {
+        "params": [
+          100,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "alarm beams (param 1)",
+      "before": [
+        "P 1 250 900 00FF00 000000 6 2 0 0 0*5B"
+      ],
+      "cmd": {
+        "type": "A",
+        "idx": 1,
+        "value": 6
+      },
+      "line": "A 1 6*46",
+      "expectReply": "OK",
+      "expectState": {
+        "params": [
+          6,
+          6,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "alarm beams clamped to 1..6",
+      "before": [
+        "P 1 250 900 00FF00 000000 6 2 0 0 0*5B",
+        "A 1 9*49"
+      ],
+      "line": "A 1 0*40",
+      "expectReply": "OK",
+      "expectState": {
+        "params": [
+          6,
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "two-tone ratio (param 0)",
+      "before": [
+        "P 2 300 700 FF4000 8000FF 30 0 0 0 0*69"
+      ],
+      "line": "A 0 100*40",
+      "expectReply": "OK",
+      "expectState": {
+        "style": 2,
+        "params": [
+          100,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "two-tone ratio clamped to 100",
+      "before": [
+        "P 2 300 700 FF4000 8000FF 30 0 0 0 0*69"
+      ],
+      "line": "A 0 250*46",
+      "expectReply": "OK",
+      "expectState": {
+        "params": [
+          100,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "preset loads pulse with thickness, whip and shape",
+      "cmd": {
+        "type": "P",
+        "style": 3,
+        "rate": 500,
+        "brightness": 800,
+        "colors": [
+          "#9966CC"
+        ],
+        "params": [
+          40,
+          70,
+          1
+        ]
+      },
+      "line": "P 3 500 800 9966CC 000000 40 70 1 0 0*5C",
+      "expectReply": "OK",
+      "expectState": {
+        "style": 3,
+        "params": [
+          40,
+          70,
+          1,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "preset clamps each pulse param to its range",
+      "line": "P 3 500 800 9966CC 000000 200 99 3 0 0*6F",
+      "expectReply": "OK",
+      "expectState": {
+        "style": 3,
+        "params": [
+          160,
+          90,
+          2,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "pulse thickness clamped up to 1 row",
+      "before": [
+        "P 3 500 800 9966CC 000000 87 0 0 0 0*61"
+      ],
+      "line": "A 0 0*41",
+      "expectReply": "OK",
+      "expectState": {
+        "params": [
+          8,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "pulse whip shape (param 2)",
+      "before": [
+        "P 3 500 800 9966CC 000000 87 0 0 0 0*61"
+      ],
+      "line": "A 2 2*41",
+      "expectReply": "OK",
+      "expectState": {
+        "params": [
+          87,
+          0,
+          2,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "lighthouse beams (param 4)",
+      "before": [
+        "P 4 500 800 FFD8A0 000000 60 50 5 0 1*53"
+      ],
+      "cmd": {
+        "type": "A",
+        "idx": 4,
+        "value": 4
+      },
+      "line": "A 4 4*41",
+      "expectReply": "OK",
+      "expectState": {
+        "params": [
+          60,
+          50,
+          5,
+          0,
+          4
+        ]
+      }
+    },
+    {
+      "name": "param index past the last slot",
+      "before": [
+        "P 4 500 800 FFD8A0 000000 60 50 5 0 1*53"
+      ],
+      "line": "A 5 1*45",
+      "expectError": 3
+    },
+    {
+      "name": "preset with too many args",
+      "line": "P 0 500 500 FF0000 000000 10 0 0 0 0 0*71",
+      "expectError": 3
+    },
+    {
+      "name": "dump after a lighthouse preset",
+      "before": [
+        "P 4 500 800 FFD8A0 000000 60 50 5 3 3*52"
+      ],
+      "line": "?*3F",
+      "expectReply": "S 4 500 800 1000 FFD8A0 000000 60 50 5 3 3 0 0 0 0 0"
     },
     {
       "name": "dump with an argument",
@@ -631,7 +881,7 @@
         "L 1 1 250 1000*7A"
       ],
       "line": "?*3F",
-      "expectReply": "S 0 500 800 1000 9966CC 000000 0 0 0 0 1 1 250 1000 0"
+      "expectReply": "S 0 500 800 1000 9966CC 000000 10 0 0 0 0 1 1 250 1000 0"
     },
     {
       "name": "lfo off keeps its settings",
@@ -677,7 +927,7 @@
       "before": [
         "L 1 0 1000 500*79"
       ],
-      "line": "P 1 250 900 00FF00 000000 6 0 0 0*49",
+      "line": "P 1 250 900 00FF00 000000 6 2 0 0 0*5B",
       "expectReply": "OK",
       "expectState": {
         "style": 1,

@@ -37,7 +37,7 @@ describe('protocol fixtures (shared with the firmware)', () => {
 describe('encoder', () => {
   it('pads colours and params to the fixed slot counts', () => {
     expect(encode({ type: 'P', style: 0, rate: 1, brightness: 2, colors: ['#abcdef'], params: [] })).toBe(
-      withChecksum('P 0 1 2 ABCDEF 000000 0 0 0 0'),
+      withChecksum('P 0 1 2 ABCDEF 000000 0 0 0 0 0'),
     )
   })
 
