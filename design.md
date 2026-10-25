@@ -4,7 +4,7 @@ Patterns to control a matrix of LEDs with an arduino nano.
 Web interface to control those patterns in real time.
 
 ## Hardware
-Three strips of seventeen LEDs wrapping horizontally around a cylinder. One Arduino nano controlling all of them.
+Seven strips of eighteen LEDs wrapping horizontally around a cylinder (three strips of seventeen before 2026-10-25). One Arduino nano controlling all of them.
 
 FastLED is used to control the LEDs.
 

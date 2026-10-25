@@ -8,7 +8,7 @@ Read all of it before starting any phase.
 | Topic | Decision |
 |---|---|
 | Board | Classic Arduino Nano, ATmega328P (2 KB RAM, 32 KB flash). Budget: ≤ 75% RAM, ≤ 85% flash. |
-| LEDs | WS2812B, GRB, 3 strips × 17 on pins 2, 3, 4 (as in `arduino/*.ino`). Calibrated in Phase 0: bottom = pin 2, middle = pin 3, top = pin 4; identity mapping (no offset, no reversal); increasing column = anticlockwise from above. |
+| LEDs | WS2812B, GRB, **7 strips × 18** on pins 2–8, each strip a ring around the cylinder (changed 2026-10-25 from 3 × 17 on pins 2, 3, 4; see §7 Hardware change). Not yet recalibrated: `layout.h` assumes the identity mapping (pin 2 = bottom … pin 8 = top, no offset, no reversal). The 3 × 17 build was calibrated in Phase 0 as identity, with increasing column = anticlockwise from above. |
 | Architecture | All effects run **on the Arduino**. Browser sends small commands only. |
 | Boot behaviour | Fixed default: Ominous Glow, default colour, rate 0.5, brightness 0.8, global 1.0. No EEPROM. |
 | Transitions | Hard cut between presets. |
@@ -40,7 +40,7 @@ firmware/
     style.h         styleDef(id): copies one registry entry out of flash
     trig.h          sin16/cos16 (port the FastLED algorithm), fixed-point helpers
     timing.h        phase accumulator, rate→period mapping
-    frame.h         Frame: logical 3×17 view (row 0 = bottom, col 0 = calibrated column 0) over a
+    frame.h         Frame: logical 7×18 view (row 0 = bottom, col 0 = calibrated column 0) over a
                     caller-owned pixel buffer + index function, so main.cpp renders straight into leds[]
     engine.h/.cpp   effect state: style, live rate/brightness, global, colours, params, main phase
     effects/*.h/.cpp one per style
@@ -76,13 +76,16 @@ When a board is attached, `make smoke` also runs: flash, then `scripts/smoke.ts`
 ## 2. Shared conventions
 
 ### 2.1 Geometry
-A logical frame is 3 rows × 17 columns. Row 0 is the bottom. Columns wrap around (column 16 is next to column 0).
+A logical frame is 7 rows × 18 columns (`core::ROWS`, `core::COLS`). Row 0 is the bottom. Columns wrap around (column 17 is next to column 0).
+Effects use `ROWS`/`COLS`, never literal sizes, so the geometry lives in `frame.h` and `layout.h` only.
 `main.cpp` maps the logical frame to physical LEDs using `layout.h`:
 ```c
-const uint8_t STRIP_FOR_ROW[3];   // which strip (0=pin2,1=pin3,2=pin4) is row r
-const uint8_t COL_OFFSET[3];      // physical index of logical col 0, per row
-const bool    COL_REVERSED[3];    // physical index runs opposite to logical col direction
+const uint8_t STRIP_FOR_ROW[7];   // which strip (0=pin2 … 6=pin8) is row r
+const uint8_t COL_OFFSET[7];      // physical index of logical col 0, per row
+const bool    COL_REVERSED[7];    // physical index runs opposite to logical col direction
 ```
+`ADD_STRIPS(leds)` in `layout.h` registers one FastLED controller per pin (shared by `main.cpp` and `calibrate.cpp`).
+`ledIndex` wraps with a compare-and-subtract, not `%`: a per-pixel divide cost Two-tone ~25% of its frame rate on 126 LEDs.
 Effects never see physical indices.
 
 ### 2.2 Normalised controls
@@ -98,7 +101,10 @@ The UI works in floats in [0,1]. On the wire, values are integers.
 
 The final brightness is applied with `FastLED.setBrightness(output)`, with dithering left on. Effects render at full value. B_min = 4 and B_max = 255 for every style for now; both live in `styles.json`.
 
-The rate→period mapping can be evaluated once per frame (the LFO may modulate it), so it must not call `pow()` per frame. Use a 33-entry log-period table with linear interpolation, built when the style changes.
+The rate→period mapping can be evaluated once per frame (the LFO may modulate it), so it must not call `pow()` per frame.
+Implementation (changed 2026-10-25 to free RAM): increment = inc(P_slow) · 2^(x), x = log2(P_slow/P_fast) · r/1000. `build()` takes the logarithm once per style
+change; `inc()` evaluates 2^frac from a 129-entry Q30 table in flash with linear interpolation (< 4 ppm). Ratios up to 16× (4 octaves) are supported.
+This replaced a 33-entry per-style increment table in RAM (132 B).
 
 ### 2.3 Time base
 Each frame, compute `dt_us` from `micros()`. Phase accumulators are `uint32_t`, and 2³² is one cycle.
@@ -107,6 +113,7 @@ Implementation: the increment is held in Q8 (`2^40 / period_us`, rounded) with 8
 Measured on hardware (Phase 1): Ominous ≈ 400 fps, Alarm ≈ 300 fps; `micros()` tracks host time to 0.04% despite `show()` disabling interrupts.
 Phase 4, at full rate (`make smoke` reports these): Two-tone ≈ 246 fps, Pulse ≈ 322 fps, Lighthouse ≈ 265 fps.
 Phase 6, with a 5 Hz full-depth LFO sweeping the rate: Ominous ≈ 399, Alarm ≈ 264, Two-tone ≈ 238, Pulse ≈ 305, Lighthouse ≈ 255 fps.
+7 × 18 (2026-10-25, 126 LEDs, `show()` alone ≈ 3.8 ms), full rate / with the LFO: Ominous 225/216, Alarm 174/170, Two-tone 130/128, Pulse 188/183, Lighthouse 171/166 fps.
 Because rate changes alter the increment and never the phase, rate edits and LFO modulation never cause visual jumps.
 Target ≥ 100 fps. Report the measured fps in the `?` dump.
 
@@ -123,7 +130,7 @@ Target ≥ 100 fps. Report the measured fps in the `?` dump.
       { "key": "whip",  "label": "Whip",  "wireMin": 0, "wireMax": 90,  "default": 60,  "scale": 0.01 },
       { "key": "flash", "label": "Flash", "wireMin": 0, "wireMax": 100, "default": 50,  "scale": 0.01 },
       { "key": "width", "label": "Width", "wireMin": 2, "wireMax": 9,   "default": 5,   "scale": 1, "unit": "cols" },
-      { "key": "front", "label": "Front column", "wireMin": 0, "wireMax": 16, "default": 0, "scale": 1 } ] }
+      { "key": "front", "label": "Front column", "wireMin": 0, "wireMax": 17, "default": 0, "scale": 1 } ] }
 ]}
 ```
 Each style also has `bMin`/`bMax` (4/255) and `defaultColors`. These colour defaults can be tuned later: ominous `#9966CC`, alarm `#FF0000`, twotone `#FF4000`,`#8000FF`, pulse `#9966CC`, lighthouse `#FFD8A0`.
@@ -135,16 +142,16 @@ Notation: φ ∈ [0,1) is the style's main phase. `C`, `C2` are colours. `I` ∈
 Use integer sin16/cos16 at runtime; the formulas below are the reference that native tests check against (tolerance ±2/255).
 
 ### 3.1 Ominous Glow (Phase 1)
-All 51 LEDs are identical. A breathing glow:
+All 126 LEDs are identical. A breathing glow:
 `I = D + (1 − D) · (1 − cos 2πφ) / 2`, with `D = 0.1` (constant). The trough is 10% of the peak (tuned at the Phase 1 gate from 0.25: "should go darker").
 Period 8 s (slow) → 1.5 s (fast).
 Tests: min/max over one period ≈ 0.1/1.0; the period is exact; changing rate mid-cycle causes no jump in I.
 
 ### 3.2 Alarm (Phase 1)
-Two full-brightness vertical lines (all rows identical) of the same colour, 8.5 columns apart, rotating toward increasing column numbers.
+Two full-brightness vertical lines (all rows identical) of the same colour, half a turn (9 columns) apart, rotating toward increasing column numbers.
 **Hard-stepped** (Phase 1 gate: "just two full bright columns"): each line occupies exactly one column at full brightness and jumps to the next; no anti-aliasing.
-Head columns: `h₀ = ⌊17φ⌋`, `h₁ = ⌊17φ + 8.5⌋ mod 17`. Because 17 is odd, the gap between the lines alternates 8/9 columns every half-column of travel.
-For column c and head h, let `d = (h − c) mod 17` in whole columns; `d ∈ 1..8` is behind the head, `d ∈ 9..16` is ahead (dark).
+Head columns: `h₀ = ⌊18φ⌋`, `h₁ = ⌊18φ + 9⌋ mod 18`. With 18 columns the gap is always exactly 9 (with 3 × 17 it alternated 8/9).
+For column c and head h, let `d = (h − c) mod 18` in whole columns; `d ∈ 1..9` is behind the head, `d ∈ 10..17` is ahead (dark).
 Optional tail, `L` = param `tail` in columns (default **0** = bare columns; kept so presets can dial one in):
 ```
 f(d) = 1                         d = 0
@@ -153,16 +160,18 @@ f(d) = 1                         d = 0
 ```
 `I(c) = max(f(d₀), f(d₁))`.
 Period (one revolution) 2 s → 0.3 s.
-Tests: head columns match ⌊17φ⌋ and ⌊17φ + 8.5⌋; L=0 gives exactly two columns at 255 and the rest 0; the tail only lights columns behind the head; at the fastest rate with 1 ms frames each line steps one column at a time and never skips.
+Tests: head columns match ⌊18φ⌋ and ⌊18φ + 9⌋; L=0 gives exactly two columns at 255 and the rest 0; the tail only lights columns behind the head; at the fastest rate with 1 ms frames each line steps one column at a time and never skips.
 
 ### 3.3 Two-tone Glow (Phase 4)
-Each LED i (all 51 independently) has its own phase φᵢ (uint16) and multiplier mᵢ ∈ [0.5, 1.5] (uint8, stored as m·128).
+Each LED i (all 126 independently) has its own phase φᵢ (uint16) and multiplier mᵢ ∈ [0.5, 1.5] (uint8, stored as m·128).
 Its period is `base · mᵢ`, with base 6 s → 1 s. When φᵢ wraps, re-roll mᵢ uniformly (seeded PRNG, e.g. xorshift16).
 Colour: `blend(C, C2, (1 − cos 2πφᵢ)/2)` in RGB. At a wrap the LED is exactly `C`, so re-rolling never causes a jump.
 Initial φᵢ are random, so LEDs start de-synchronised.
-Implementation (Phase 4): each LED stores a 24-bit phase (uint16 + 8 fractional bits, so slow LEDs keep exact periods) and its
-speed 1/mᵢ in Q7 instead of mᵢ, so the per-frame update needs no division. mᵢ·128 is rolled uniformly in 65..192 and the speed
-rounded up, which keeps 1/speed inside [0.5, 1.5]. RAM: 51 × 4 = 204 B. It's a plain `Engine` member: the other effects are
+Implementation (Phase 4, compacted 2026-10-25): each LED stores a uint16 phase and its speed 1/mᵢ in Q7 instead of mᵢ, so the
+per-frame update needs no division, in two separate arrays (no padding). mᵢ·128 is rolled uniformly in 65..192 and the speed
+rounded up, which keeps 1/speed inside [0.5, 1.5]. RAM: 126 × 3 = 378 B. The 8 fractional phase bits of the 3 × 17 build were
+dropped for RAM: each frame's step is rounded with a shared dither offset that advances by an odd amount per frame, so steps
+round up as often as their fraction says and periods stay exact on average. It's a plain `Engine` member: the other effects are
 pure functions of φ, so there is nothing to share a union with. The xorshift16 state carries on across `P` loads, so each load
 starts from a different pattern. A frame gap is clamped to one base cycle.
 Tests: continuity across a wrap; the distribution of mᵢ stays within bounds; the colour stays on the C–C2 line.
@@ -171,16 +180,18 @@ Tests: continuity across a wrap; the distribution of mᵢ stays within bounds; t
 Total cycle T (2.8 s → 0.7 s; the log midpoint 1.4 s matches wave.ino's 900 + 500 ms).
 From wave.ino ratios: `womp = T·9/14`, `gap = T·5/14`, `stagger = T·1.6/14`, `waveLen = womp − 2·stagger`.
 Row r starts at `r·stagger`. Its local progress `p = (t − r·stagger)/waveLen`. If 0 ≤ p < 1, `I_r = dim8_video(sin8(128p))`; otherwise 0 (black, no floor, per the decision).
-All columns in a row are identical. Rows climb from 0 (bottom) to 2.
+All columns in a row are identical. Rows climb from 0 (bottom) to 6.
+**7 rows (2026-10-25, "same climb, finer steps"):** the bottom-to-top span and `waveLen` stay as above (`waveLen = T·5.8/14`, top row starts
+`T·3.2/14` after the bottom one), so `stagger = T·3.2/14 / (ROWS − 1)`. Rows 0, 3, 6 match wave.ino's rows 0, 1, 2 exactly.
 `sin8` and `dim8_video` are ported exactly from FastLED. As in wave.ino, `sin8(128p)` runs 128 → 255 → 128 (not from 0), so
 each row switches on at ≈ 65/255, swells to full and drops from ≈ 68/255 to black: a faithful port, including that edge.
-Tests: row order of peaks is 0, 1, 2; all rows are dark during the gap; matches wave.ino output at T = 1.4 s.
+Tests: rows peak bottom to top; rows start evenly staggered; all rows are dark during the gap; rows 0, 3, 6 match wave.ino output at T = 1.4 s.
 
 ### 3.5 Lighthouse (Phase 4)
 One soft beam rotates with a speed "whip" and an optional brightness "flash" when it passes the front.
 Warped angle (in revolutions): `θ = φ + (k / 2π) · sin 2πφ`, with k = `whip` ∈ [0, 0.9].
 Then dθ/dφ = 1 + k·cos 2πφ. The beam is fastest when passing the front (θ = 0) and slowest on the far side. θ is monotonic for k < 1, and the period stays exact.
-Beam centre: `x = (17θ + front) mod 17`. Width W = `width` columns:
+Beam centre: `x = (18θ + front) mod 18`. Width W = `width` columns:
 `f(d) = (1 + cos(π d / (W/2))) / 2` for |d| < W/2 (circular distance), else 0.
 Flash, with s = `flash` ∈ [0,1]: `m = (1 − s) + s · ((1 + cos 2πθ)/2)³`. Full brightness at the front, `1 − s` at the far side.
 `I(c) = f(d(c)) · m`. All rows are identical.
@@ -359,8 +370,19 @@ Within a phase, firmware and web work can run as two parallel agents once the `s
 3. Tests + smoke additions.
 4. **Gate checklist:** brightness wobble and rate wobble feel musical across the range; the LFO keeps running with the browser closed; loading a preset stops it.
 
+### Hardware change — 7 × 18 (2026-10-25)
+The lightbox was rebuilt as 7 strips × 18 LEDs, each a ring around the cylinder, one data pin each (2–8). Decisions (user, 2026-10-25):
+7 rings (7 rows × 18 wrapping columns); pins 2–8; compact Two-tone to 3 B/LED to stay in the RAM budget; Vertical Pulse keeps its
+climb span with finer steps (§3.4). Alarm lines are now exactly 9 apart; Lighthouse `front` runs 0–17; Alarm `tail` stays 0–8 columns.
+1. Done: geometry, effects, tests, fixtures, `layout.h` (identity, uncalibrated), RAM cuts (Two-tone, rate table to flash, serial buffers), fps check.
+2. **Gate:** `make calibrate`. Each strip lights LED 0 white and LEDs 1–3 in its colour, rainbow order: pin 2 red, 3 orange, 4 yellow,
+   5 green, 6 cyan, 7 blue, 8 magenta. Ask the user the order from bottom to top, whether the white LEDs line up vertically (if not, how many
+   apart), whether every tail runs the same direction, and whether 18 LEDs wrap exactly once. Fill in `layout.h`, then `make verify-layout`
+   (column 0 on all rows, a dot sweeping columns 0→17 on row 0) and get the user's confirmation. Then `make demo`: Alarm lines vertical and
+   opposite each other, Pulse climbing smoothly through 7 rows, Two-tone random across all 126, Lighthouse beam width and front column.
+
 ## 8. Risks & notes for agents
-- **RAM:** 2 KB total. FastLED frame 153 B + logical frame (render directly into `leds[]` through the layout map; don't keep a second 153 B buffer unless you've measured that it fits) + serial 64 B + line buffer 72 B + effect union ~160 B. Don't use `String` or dynamic allocation in firmware. Keep string literals in `F()`/PROGMEM.
+- **RAM:** 2 KB total; 1,517 B (74.1%) at 7 × 18. FastLED frame 378 B (render directly into `leds[]` through the layout map; there is no room for a second buffer) + 7 FastLED controllers ≈ 43 B each (object + vtable, which AVR keeps in RAM) + Two-tone 378 B + `Serial` with 16 B RX/TX buffers (`-DSERIAL_*_BUFFER_SIZE` in `[main]`, saves 96 B; the handshake reads each line in a tight loop) + line buffer 72 B. Don't use `String` or dynamic allocation in firmware. Keep string literals in `F()`/PROGMEM.
 - **Floats on AVR** are slow. Use them only on parameter change, never per pixel per frame.
 - **Old vs new bootloader:** if uploading with `nanoatmega328new` fails, try `nanoatmega328`. Record which one works in `CLAUDE.md`.
 - **Dithering at low brightness with black backgrounds:** tails and fades may show 8-bit stepping. If the user reports it at a gate, options are FastLED dithering tweaks or a per-style floor. Ask the user; don't decide alone.

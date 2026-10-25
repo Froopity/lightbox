@@ -27,24 +27,23 @@ uint8_t State::rollSpeed() {
 }
 
 void State::reset() {
-  for (Led& l : leds_) {
-    l.speed = rollSpeed();
-    l.phase = next();
-    l.frac = 0;
+  for (uint8_t i = 0; i < PIXELS; i++) {
+    speed_[i] = rollSpeed();
+    phase_[i] = next();
   }
 }
 
 void State::advance(uint32_t dBase) {
   if (dBase > BASE_CYCLE) dBase = BASE_CYCLE;
-  for (Led& l : leds_) {
-    // Phase in 2^24 units, plus dBase / m.
-    uint32_t p = ((uint32_t)l.phase << 8 | l.frac) + ((dBase * l.speed) >> 7);
-    if (p >= BASE_CYCLE) {  // back at C: re-roll, which can't cause a jump
-      p &= BASE_CYCLE - 1;
-      l.speed = rollSpeed();
+  dither_ += 157;
+  for (uint8_t i = 0; i < PIXELS; i++) {
+    // dBase / m in 2^24 units, rounded (dithered) to the uint16 phase.
+    uint32_t p = phase_[i] + ((((dBase * speed_[i]) >> 7) + dither_) >> 8);
+    if (p > 0xFFFF) {  // back at C: re-roll, which can't cause a jump
+      p &= 0xFFFF;
+      speed_[i] = rollSpeed();
     }
-    l.phase = (uint16_t)(p >> 8);
-    l.frac = (uint8_t)p;
+    phase_[i] = (uint16_t)p;
   }
 }
 
@@ -53,7 +52,7 @@ uint8_t State::mix(uint16_t phase) { return (uint8_t)(raisedCos16(phase) >> 8); 
 void State::render(Frame& f, Rgb c, Rgb c2) const {
   uint8_t i = 0;
   for (uint8_t r = 0; r < ROWS; r++)
-    for (uint8_t col = 0; col < COLS; col++, i++) f.set(r, col, blend(c, c2, mix(leds_[i].phase)));
+    for (uint8_t col = 0; col < COLS; col++, i++) f.set(r, col, blend(c, c2, mix(phase_[i])));
 }
 
 }  // namespace twotone

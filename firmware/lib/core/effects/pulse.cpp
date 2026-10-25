@@ -7,9 +7,10 @@ namespace pulse {
 
 namespace {
 
-// Fractions of the cycle T in 2^32 phase units, from wave.ino's 900 ms womp + 500 ms gap at T = 1400 ms:
-// stagger = T·1.6/14 between rows, waveLen = womp − 2·stagger = T·5.8/14 for each row's swell.
-constexpr uint32_t STAGGER = (uint32_t)(4294967296.0 * 1.6 / 14 + 0.5);
+// Fractions of the cycle T in 2^32 phase units, from wave.ino's 900 ms womp + 500 ms gap at T = 1400 ms.
+// wave.ino's 3 rows start 1.6/14 T apart, so its top row starts 3.2/14 T after the bottom one. The climb keeps
+// that span over ROWS rows, and each row keeps waveLen = womp − 3.2/14 T = T·5.8/14 for its swell.
+constexpr uint32_t STAGGER = (uint32_t)(4294967296.0 * 3.2 / 14 / (ROWS - 1) + 0.5);
 constexpr uint32_t WAVE_LEN = (uint32_t)(4294967296.0 * 5.8 / 14 + 0.5);
 
 }  // namespace

@@ -62,7 +62,7 @@
         { "key": "whip", "label": "Whip", "wireMin": 0, "wireMax": 90, "default": 60, "scale": 0.01 },
         { "key": "flash", "label": "Flash", "wireMin": 0, "wireMax": 100, "default": 50, "scale": 0.01 },
         { "key": "width", "label": "Width", "wireMin": 2, "wireMax": 9, "default": 5, "scale": 1, "unit": "cols" },
-        { "key": "front", "label": "Front column", "wireMin": 0, "wireMax": 16, "default": 0, "scale": 1 }
+        { "key": "front", "label": "Front column", "wireMin": 0, "wireMax": 17, "default": 0, "scale": 1 }
       ]
     }
   ]

@@ -14,14 +14,14 @@ static double refProfile(int d, double L) {
   return pow(1 - d / (L + 1), 2);
 }
 
-static int refHead(double phi, int line) { return (int)floor(17 * phi + 8.5 * line) % 17; }
+static int refHead(double phi, int line) { return (int)floor(COLS * phi + COLS / 2.0 * line) % COLS; }
 
 static void test_profile_matches_reference() {
   for (uint8_t tail = 0; tail <= 16; tail++)
     for (int8_t d = -3; d <= 12; d++) TEST_ASSERT_INT_WITHIN(2, toByte(refProfile(d, tail * 0.5)), alarm::profile(d, tail));
 }
 
-static void test_heads_follow_17_phi_and_sit_8_5_apart() {
+static void test_heads_follow_cols_phi_and_sit_half_a_turn_apart() {
   for (int i = 0; i < 10000; i++) {
     double phi = (i + 0.5) / 10000.0;
     TEST_ASSERT_EQUAL_UINT8(refHead(phi, 0), alarm::headColumn(phaseOf(phi), 0));
@@ -45,7 +45,7 @@ static void test_zero_tail_is_two_full_columns() {
 }
 
 static void test_tail_trails_behind_only() {
-  uint32_t phase = phaseOf(5.2 / 17.0);  // line 0 on column 5, line 1 on column 13
+  uint32_t phase = phaseOf(5.2 / COLS);  // line 0 on column 5, line 1 on column 14
   uint8_t tail = 6;                      // 3 columns
   TEST_ASSERT_EQUAL_UINT8(255, alarm::intensity(phase, 5, tail));
   TEST_ASSERT_INT_WITHIN(2, toByte(pow(1 - 1 / 4.0, 2)), alarm::intensity(phase, 4, tail));
@@ -69,7 +69,7 @@ static void test_steps_through_every_column_in_order() {
     }
     prev = cur;
   }
-  TEST_ASSERT_EQUAL_UINT8(17, steps);  // one revolution in 300 ms
+  TEST_ASSERT_EQUAL_UINT8(COLS, steps);  // one revolution in 300 ms
 }
 
 static void test_render_rows_identical() {
@@ -88,7 +88,7 @@ static void test_render_rows_identical() {
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_profile_matches_reference);
-  RUN_TEST(test_heads_follow_17_phi_and_sit_8_5_apart);
+  RUN_TEST(test_heads_follow_cols_phi_and_sit_half_a_turn_apart);
   RUN_TEST(test_zero_tail_is_two_full_columns);
   RUN_TEST(test_tail_trails_behind_only);
   RUN_TEST(test_steps_through_every_column_in_order);

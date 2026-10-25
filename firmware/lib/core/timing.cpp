@@ -2,25 +2,68 @@
 
 #include <math.h>
 
+#include "pgm.h"
+
 namespace core {
 
+namespace {
+
+constexpr uint8_t SEGMENTS = 128;
+
+// 2^(i/128) in Q30, i = 0..128: 2^x for one octave, linearly interpolated (error < 4 ppm).
+const uint32_t EXP2[SEGMENTS + 1] CORE_PROGMEM = {
+    1073741824, 1079572136, 1085434106, 1091327906, 1097253708, 1103211687,
+    1109202018, 1115224875, 1121280436, 1127368878, 1133490379, 1139645120,
+    1145833280, 1152055042, 1158310587, 1164600099, 1170923762, 1177281762,
+    1183674286, 1190101520, 1196563654, 1203060876, 1209593378, 1216161350,
+    1222764986, 1229404479, 1236080024, 1242791816, 1249540052, 1256324931,
+    1263146652, 1270005413, 1276901417, 1283834865, 1290805962, 1297814910,
+    1304861917, 1311947188, 1319070932, 1326233356, 1333434672, 1340675091,
+    1347954824, 1355274085, 1362633090, 1370032052, 1377471191, 1384950723,
+    1392470869, 1400031848, 1407633882, 1415277195, 1422962010, 1430688553,
+    1438457051, 1446267730, 1454120821, 1462016553, 1469955159, 1477936870,
+    1485961921, 1494030547, 1502142985, 1510299473, 1518500250, 1526745556,
+    1535035634, 1543370725, 1551751076, 1560176931, 1568648537, 1577166143,
+    1585730000, 1594340357, 1602997467, 1611701585, 1620452965, 1629251865,
+    1638098541, 1646993254, 1655936265, 1664927835, 1673968228, 1683057710,
+    1692196547, 1701385007, 1710623359, 1719911875, 1729250827, 1738640488,
+    1748081133, 1757573041, 1767116489, 1776711757, 1786359126, 1796058879,
+    1805811301, 1815616678, 1825475297, 1835387448, 1845353420, 1855373507,
+    1865448001, 1875577199, 1885761398, 1896000896, 1906295993, 1916646992,
+    1927054196, 1937517909, 1948038440, 1958616096, 1969251188, 1979944027,
+    1990694927, 2001504204, 2012372174, 2023299156, 2034285470, 2045331439,
+    2056437387, 2067603638, 2078830522, 2090118366, 2101467502, 2112878262,
+    2124350982, 2135885998, 2147483648,
+};
+
+uint32_t exp2At(uint8_t i) {
+  uint32_t v;
+  pgmCopy(&v, &EXP2[i], sizeof v);
+  return v;
+}
+
+}  // namespace
+
 void RateMap::build(uint32_t periodSlowMs, uint32_t periodFastMs) {
-  float ratio = (float)periodFastMs / (float)periodSlowMs;
-  for (uint8_t i = 0; i <= SEGMENTS; i++) {
-    float periodUs = (float)periodSlowMs * 1000.0f * powf(ratio, (float)i / SEGMENTS);
-    table_[i] = incForPeriodUs((uint32_t)(periodUs + 0.5f));
-  }
+  slow_ = incForPeriodUs(periodSlowMs * 1000);
+  // log2(slow/fast) per wire unit in Q30. Capped below 4 octaves so inc()'s product fits in 32 bits.
+  float octaves = logf((float)periodSlowMs / (float)periodFastMs) * 1.44269504f;  // avr-libc has no log2f
+  if (octaves < 0) octaves = 0;
+  if (octaves > 3.99f) octaves = 3.99f;
+  octavesPerUnit_ = (uint32_t)(octaves * (1073741824.0f / WIRE_MAX) + 0.5f);
 }
 
 PhaseInc RateMap::inc(uint16_t rate) const {
   if (rate > WIRE_MAX) rate = WIRE_MAX;
-  uint16_t pos = (uint16_t)(rate * SEGMENTS);  // ≤ 32000
-  uint8_t i = (uint8_t)(pos / WIRE_MAX);
-  if (i == SEGMENTS) return table_[SEGMENTS];
-  uint16_t f = (uint16_t)(pos % WIRE_MAX);
-  // Increments grow with rate, so the difference is non-negative.
-  // Adjacent entries differ by a few percent, so the product fits in 32 bits.
-  return table_[i] + (table_[i + 1] - table_[i]) * f / WIRE_MAX;
+  // inc = slow · 2^x, x = octaves · rate/1000 in Q30: whole octaves n, then the table for the fraction.
+  uint32_t x = octavesPerUnit_ * rate;
+  uint8_t n = (uint8_t)(x >> 30);
+  uint32_t f = x & 0x3FFFFFFF;
+  uint8_t i = (uint8_t)(f >> 23);
+  uint32_t t = (f >> 8) & 0x7FFF;  // position within the segment, Q15
+  uint32_t a = exp2At(i), b = exp2At((uint8_t)(i + 1));
+  uint32_t m = a + (uint32_t)(((uint64_t)(b - a) * t) >> 15);  // 2^frac in Q30
+  return (PhaseInc)(((uint64_t)slow_ * m) >> (30 - n));
 }
 
 }  // namespace core

@@ -5,13 +5,13 @@ namespace alarm {
 
 namespace {
 
-// Columns head is ahead of col, in [0, 17): 0 = on the head, small = just behind it.
+// Columns head is ahead of col, in [0, COLS): 0 = on the head, small = just behind it.
 uint8_t behind(uint8_t head, uint8_t col) { return (uint8_t)((head + COLS - col) % COLS); }
 
 }  // namespace
 
 uint8_t headColumn(uint32_t phase, uint8_t line) {
-  // 34 half-columns per turn; line 1 is 17 half-columns (8.5 columns) ahead of line 0.
+  // 2·COLS half-columns per turn; line 1 is COLS half-columns (half a turn) ahead of line 0.
   uint8_t half = (uint8_t)(((uint64_t)phase * (2 * COLS)) >> 32);
   if (line) half = (uint8_t)((half + COLS) % (2 * COLS));
   return (uint8_t)(half / 2);

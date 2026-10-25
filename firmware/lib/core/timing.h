@@ -25,16 +25,16 @@ struct Phase {
 constexpr uint16_t WIRE_MAX = 1000;  // normalised controls run 0..1000 on the wire
 
 // Maps rate 0..1000 to a phase increment: period = slow · (fast/slow)^(r/1000).
-// The table is built (with floats) once per style change; lookups are integer and cheap enough per frame.
+// build() takes one logarithm (with floats) per style change; inc() is integer, from a flash table of 2^x,
+// and cheap enough per frame. No per-style table in RAM.
 class RateMap {
  public:
-  static constexpr uint8_t SEGMENTS = 32;
-
   void build(uint32_t periodSlowMs, uint32_t periodFastMs);
   PhaseInc inc(uint16_t rate) const;
 
  private:
-  PhaseInc table_[SEGMENTS + 1] = {};
+  PhaseInc slow_ = 0;              // increment at rate 0
+  uint32_t octavesPerUnit_ = 0;    // log2(slow/fast) / 1000, Q30
 };
 
 // Q8 increment for a period in microseconds.

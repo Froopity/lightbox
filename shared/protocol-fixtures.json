@@ -233,7 +233,7 @@
     },
     {
       "name": "preset clamps each lighthouse param to its range",
-      "line": "P 4 500 800 FFD8A0 000000 95 101 1 17*4F",
+      "line": "P 4 500 800 FFD8A0 000000 95 101 1 18*40",
       "expectReply": "OK",
       "expectState": {
         "style": 4,
@@ -241,7 +241,7 @@
           90,
           100,
           2,
-          16
+          17
         ]
       }
     },

@@ -9,7 +9,7 @@ namespace {
 
 constexpr uint16_t TURN = COLS * 256;  // one revolution in 1/256 columns
 
-// Beam centre x = (17θ + front) mod 17, in 1/256 columns.
+// Beam centre x = (18θ + front) mod 18, in 1/256 columns.
 uint16_t centre(uint16_t th, uint8_t front) { return (uint16_t)((((uint32_t)th * COLS >> 8) + front * 256) % TURN); }
 
 uint8_t intensityAt(uint16_t x, uint8_t gain, uint8_t col, uint8_t width) {

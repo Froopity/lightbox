@@ -61,8 +61,8 @@ static void test_render_dispatches_on_style() {
   e.loadStyle(STYLE_ALARM);
   TestFrame t;
   e.render(t.f);
-  // Phase 0: line 0 on column 0, line 1 on column 8 (8.5 rounded down), everything else dark.
-  for (uint8_t c = 0; c < COLS; c++) TEST_ASSERT_EQUAL_UINT8(c == 0 || c == 8 ? 255 : 0, t.f.get(2, c).r);
+  // Phase 0: line 0 on column 0, line 1 half a turn on, everything else dark.
+  for (uint8_t c = 0; c < COLS; c++) TEST_ASSERT_EQUAL_UINT8(c == 0 || c == COLS / 2 ? 255 : 0, t.f.get(2, c).r);
 }
 
 static void test_render_dispatches_new_styles() {
@@ -84,8 +84,8 @@ static void test_render_dispatches_new_styles() {
 
   e.loadStyle(STYLE_TWOTONE);
   e.render(t.f);
-  Rgb want = blend(rgbFrom(0xFF4000), rgbFrom(0x8000FF), twotone::State::mix(e.twotone().phase(20)));
-  TEST_ASSERT_EQUAL_UINT8(want.b, t.f.get(1, 3).b);  // LED 20 = row 1, column 3
+  Rgb want = blend(rgbFrom(0xFF4000), rgbFrom(0x8000FF), twotone::State::mix(e.twotone().phase(COLS + 3)));
+  TEST_ASSERT_EQUAL_UINT8(want.b, t.f.get(1, 3).b);  // LED COLS + 3 = row 1, column 3
 }
 
 static void test_twotone_reload_rerolls_and_tick_advances() {

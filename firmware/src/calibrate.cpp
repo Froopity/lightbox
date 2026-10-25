@@ -1,9 +1,9 @@
 // Calibration sketch (env:calibrate).
-// Each strip: LED 0 white, LEDs 1–3 in the strip's colour (pin 2 red, pin 3 green,
-// pin 4 blue) at decreasing brightness to show direction. Everything else off.
+// Each strip: LED 0 white, LEDs 1–3 in the strip's colour (rainbow order: pin 2 red, 3 orange,
+// 4 yellow, 5 green, 6 cyan, 7 blue, 8 magenta) at decreasing brightness to show direction. Everything else off.
 //
 // With -DVERIFY_LAYOUT (env:verify): logical column 0 lit white on every row, plus a
-// dot sweeping logical columns 0→16 on row 0 only, using layout.h.
+// dot sweeping logical columns 0→17 on row 0 only, using layout.h.
 #include <Arduino.h>
 #include <FastLED.h>
 
@@ -12,9 +12,7 @@
 CRGB leds[NUM_LEDS];
 
 void setup() {
-  FastLED.addLeds<WS2812B, 2, GRB>(leds, 0, LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 3, GRB>(leds, LEDS_PER_STRIP, LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 4, GRB>(leds, 2 * LEDS_PER_STRIP, LEDS_PER_STRIP);
+  ADD_STRIPS(leds);
   FastLED.setBrightness(64);
   FastLED.clear(true);
 }
@@ -22,7 +20,8 @@ void setup() {
 #ifndef VERIFY_LAYOUT
 
 void loop() {
-  static const CRGB STRIP_COLOR[NUM_STRIPS] = {CRGB::Red, CRGB::Green, CRGB::Blue};
+  static const CRGB STRIP_COLOR[NUM_STRIPS] = {CRGB::Red,  CRGB::OrangeRed, CRGB::Yellow, CRGB::Green,
+                                               CRGB::Cyan, CRGB::Blue,      CRGB::Magenta};
   static const uint8_t LEVEL[3] = {255, 96, 32};
   FastLED.clear();
   for (uint8_t s = 0; s < NUM_STRIPS; s++) {

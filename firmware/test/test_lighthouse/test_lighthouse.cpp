@@ -39,7 +39,7 @@ static void test_constant_speed_without_whip() {
 
 static void test_beam_profile() {
   for (uint8_t w = 2; w <= 9; w++)
-    for (uint16_t d = 0; d <= 17 * 128; d += 16) TEST_ASSERT_INT_WITHIN(2, toByte(refBeam(d / 256.0, w)), lighthouse::beam(d, w));
+    for (uint16_t d = 0; d <= COLS * 128; d += 16) TEST_ASSERT_INT_WITHIN(2, toByte(refBeam(d / 256.0, w)), lighthouse::beam(d, w));
   TEST_ASSERT_EQUAL_UINT8(255, lighthouse::beam(0, 5));
 }
 
@@ -52,7 +52,7 @@ static void test_flash_gain() {
 }
 
 static void test_peak_brightness_at_front_column() {
-  const uint8_t fronts[] = {0, 5, 16};
+  const uint8_t fronts[] = {0, 5, COLS - 1};
   for (uint8_t front : fronts)
     for (uint8_t flash = 25; flash <= 100; flash += 75) {
       lighthouse::Params p{60, flash, 5, front};
@@ -72,12 +72,12 @@ static void test_beam_centre_and_direction() {
   lighthouse::Params p{0, 0, 3, 4};
   TEST_ASSERT_EQUAL_UINT8(255, lighthouse::intensity(0, 4, p));
   TEST_ASSERT_EQUAL_UINT8(0, lighthouse::intensity(0, 6, p));
-  uint32_t later = phaseOf(1.0 / 17);  // one column on
+  uint32_t later = phaseOf(1.0 / COLS);  // one column on
   TEST_ASSERT_EQUAL_UINT8(255, lighthouse::intensity(later, 5, p));
-  // Wraps: front 16, a quarter-column on, column 0 is nearer than column 15.
-  lighthouse::Params q{0, 0, 3, 16};
-  uint32_t q4 = phaseOf(0.25 / 17);
-  TEST_ASSERT_TRUE(lighthouse::intensity(q4, 0, q) > lighthouse::intensity(q4, 15, q));
+  // Wraps: front on the last column, a quarter-column on, column 0 is nearer than the one before the front.
+  lighthouse::Params q{0, 0, 3, COLS - 1};
+  uint32_t q4 = phaseOf(0.25 / COLS);
+  TEST_ASSERT_TRUE(lighthouse::intensity(q4, 0, q) > lighthouse::intensity(q4, COLS - 2, q));
 }
 
 static void test_render_rows_identical() {

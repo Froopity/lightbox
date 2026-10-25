@@ -27,7 +27,7 @@ const Fixture FIXTURES[] = {
     {"preset replaces params set earlier", {"P 1 250 900 00FF00 000000 6 0 0 0*49", "A 0 12*72", nullptr, nullptr}, "P 1 250 900 00FF00 000000 6 0 0 0*49", "OK", 0, {-1, -1, -1, -1, -1, -1, 6, 0, 0, 0, -1, -1, -1, -1}},
     {"preset loads two-tone with both colours", {nullptr, nullptr, nullptr, nullptr}, "P 2 300 700 FF4000 8000FF 0 0 0 0*4A", "OK", 0, {2, 300, 700, -1, 0xFF4000, 0x8000FF, 0, 0, 0, 0, -1, -1, -1, -1}},
     {"preset loads lighthouse with all four params", {nullptr, nullptr, nullptr, nullptr}, "P 4 500 800 FFD8A0 000000 60 50 5 3*41", "OK", 0, {4, -1, -1, -1, -1, -1, 60, 50, 5, 3, -1, -1, -1, -1}},
-    {"preset clamps each lighthouse param to its range", {nullptr, nullptr, nullptr, nullptr}, "P 4 500 800 FFD8A0 000000 95 101 1 17*4F", "OK", 0, {4, -1, -1, -1, -1, -1, 90, 100, 2, 16, -1, -1, -1, -1}},
+    {"preset clamps each lighthouse param to its range", {nullptr, nullptr, nullptr, nullptr}, "P 4 500 800 FFD8A0 000000 95 101 1 18*40", "OK", 0, {4, -1, -1, -1, -1, -1, 90, 100, 2, 17, -1, -1, -1, -1}},
     {"lighthouse param 3 (front)", {"P 4 500 800 FFD8A0 000000 60 50 5 0*42", nullptr, nullptr, nullptr}, "A 3 12*71", "OK", 0, {-1, -1, -1, -1, -1, -1, 60, 50, 5, 12, -1, -1, -1, -1}},
     {"param on vertical pulse (no params)", {"P 3 500 800 9966CC 000000 0 0 0 0*4E", nullptr, nullptr, nullptr}, "A 0 1*40", nullptr, 3, {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}},
     {"preset accepts lowercase hex", {nullptr, nullptr, nullptr, nullptr}, "P 1 1 2 abcdef 0a0b0c 0 0 0 0*15", "OK", 0, {-1, -1, -1, -1, 0xABCDEF, 0x0A0B0C, -1, -1, -1, -1, -1, -1, -1, -1}},

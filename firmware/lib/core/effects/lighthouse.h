@@ -12,7 +12,7 @@ struct Params {
   uint8_t whip;   // k = whip/100, 0..90
   uint8_t flash;  // s = flash/100, 0..100
   uint8_t width;  // W, beam width in columns, 2..9
-  uint8_t front;  // column the beam passes fastest and brightest, 0..16
+  uint8_t front;  // column the beam passes fastest and brightest, 0..COLS − 1
 };
 
 // Warped angle θ = φ + (k/2π)·sin 2πφ, both as uint16 turns.

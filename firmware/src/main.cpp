@@ -75,9 +75,7 @@ static void demoApply() {
 #endif
 
 void setup() {
-  FastLED.addLeds<WS2812B, 2, GRB>(leds, 0, LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 3, GRB>(leds, LEDS_PER_STRIP, LEDS_PER_STRIP);
-  FastLED.addLeds<WS2812B, 4, GRB>(leds, 2 * LEDS_PER_STRIP, LEDS_PER_STRIP);
+  ADD_STRIPS(leds);
   FastLED.clear(true);
   Serial.begin(115200);
 #ifdef DEMO
